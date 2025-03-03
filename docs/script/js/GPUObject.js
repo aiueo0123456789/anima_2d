@@ -2,117 +2,39 @@ import { GPU } from "./webGPU.js";
 
 GPU.setBaseStruct(await fetch('./script/wgsl/baseStructes.wgsl').then(x => x.text()));
 
+export const v_renderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_render.wgsl').then(x => x.text()));
+export const f_renderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_render.wgsl').then(x => x.text()));
+export const v_maskRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/マスク/v.wgsl').then(x => x.text()));
+export const f_maskRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/マスク/f.wgsl').then(x => x.text()));
+export const v_allSquareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_全ての頂点を四角として表示.wgsl').then(x => x.text()));
+export const f_textureRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_テクスチャ表示.wgsl').then(x => x.text()));
+export const v_PSRSquareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_座標・回転・スケールを四角として表示.wgsl').then(x => x.text()));
+export const v_partSquareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_限られた頂点を四角として表示.wgsl').then(x => x.text()));
+export const f_squareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_円塗りつぶし.wgsl').then(x => x.text()));
+export const v_lineRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_線分.wgsl').then(x => x.text()));
+export const v_modifierMeshRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/モディファイア/v_メッシュ.wgsl').then(x => x.text()));
+export const v_graphicMeshsMeshRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/グラフィックメッシュ/v_メッシュ.wgsl').then(x => x.text()));
+export const f_fillRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_単色塗りつぶし.wgsl').then(x => x.text()));
+export const f_strokeRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_枠線.wgsl').then(x => x.text()));
+export const v_BBoxRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_BBox.wgsl').then(x => x.text()));
+export const v_bezierRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_ベジェ.wgsl').then(x => x.text()));
+export const v_cvsDraw = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/テクスチャのcvs表示/v_canvasDraw.wgsl').then(x => x.text()));
+export const f_cvsDraw = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/テクスチャのcvs表示/f_canvasDraw.wgsl').then(x => x.text()));
 
-const shaderPaths = [
-    './script/wgsl/レンダー/v_render.wgsl',
-    './script/wgsl/レンダー/f_render.wgsl',
-    './script/wgsl/レンダー/マスク/v.wgsl',
-    './script/wgsl/レンダー/マスク/f.wgsl',
-    './script/wgsl/レンダー/v_全ての頂点を四角として表示.wgsl',
-    './script/wgsl/レンダー/f_テクスチャ表示.wgsl',
-    './script/wgsl/レンダー/v_座標・回転・スケールを四角として表示.wgsl',
-    './script/wgsl/レンダー/v_限られた頂点を四角として表示.wgsl',
-    './script/wgsl/レンダー/f_円塗りつぶし.wgsl',
-    './script/wgsl/レンダー/v_線分.wgsl',
-    './script/wgsl/レンダー/モディファイア/v_メッシュ.wgsl',
-    './script/wgsl/レンダー/グラフィックメッシュ/v_メッシュ.wgsl',
-    './script/wgsl/レンダー/f_単色塗りつぶし.wgsl',
-    './script/wgsl/レンダー/f_枠線.wgsl',
-    './script/wgsl/レンダー/v_BBox.wgsl',
-    './script/wgsl/レンダー/v_ベジェ.wgsl',
-    './script/wgsl/レンダー/テクスチャのcvs表示/v_canvasDraw.wgsl',
-    './script/wgsl/レンダー/テクスチャのcvs表示/f_canvasDraw.wgsl',
-    './script/wgsl/compute/頂点の円選択.wgsl',
-    './script/wgsl/compute/頂点のボックス選択.wgsl',
-    './script/wgsl/compute/全ての頂点からBBoxを計算.wgsl',
-    './script/wgsl/compute/限られた頂点からBBoxを計算.wgsl',
-    './script/wgsl/compute/モディファイア/モディファイアの変形を適応.wgsl',
-    './script/wgsl/compute/回転モディファイアの変形を適応.wgsl',
-    './script/wgsl/compute/ベジェモディファイア/ベジェモディファイアの変形を適応.wgsl',
-    './script/wgsl/compute/全ての頂点にアニメーションを適応.wgsl',
-    './script/wgsl/compute/モディファイア/頂点にモディファイアとの関係を作る.wgsl',
-    './script/wgsl/compute/ベジェモディファイア/頂点にベジェモディファイアとの関係を作る.wgsl',
-    './script/wgsl/compute/全てのアニメーション頂点データを更新.wgsl',
-    './script/wgsl/compute/全てのベース頂点データを更新.wgsl',
-    './script/wgsl/compute/全ての頂点の平均.wgsl',
-    './script/wgsl/compute/中心位置を変更.wgsl'
-];
-
-// すべてのファイルを並列で取得
-const shaderTexts = await Promise.all(shaderPaths.map(path => fetch(path).then(res => res.text())));
-
-// WebGPU のシェーダーモジュールを作成
-const shaderModules = shaderTexts.map(text => GPU.createShaderModule(text));
-
-// シェーダーモジュールを適切な変数に割り当て
-export const [
-    v_renderShaderModule,
-    f_renderShaderModule,
-    v_maskRenderShaderModule,
-    f_maskRenderShaderModule,
-    v_allSquareRenderShaderModule,
-    f_textureRenderShaderModule,
-    v_PSRSquareRenderShaderModule,
-    v_partSquareRenderShaderModule,
-    f_squareRenderShaderModule,
-    v_lineRenderShaderModule,
-    v_modifierMeshRenderShaderModule,
-    v_graphicMeshsMeshRenderShaderModule,
-    f_fillRenderShaderModule,
-    f_strokeRenderShaderModule,
-    v_BBoxRenderShaderModule,
-    v_bezierRenderShaderModule,
-    v_cvsDraw,
-    f_cvsDraw,
-    circleSelectVertices,
-    boxSelectVertices,
-    calculateAllBBox,
-    calculateLimitBBox,
-    modifierTransform,
-    rotateModifierTransform,
-    lineModifierTransform,
-    adaptAllAnimationToVertices,
-    setModifierWeightToGraphicMesh,
-    setLineModifierWeightToGraphicMesh,
-    animationTransform,
-    baseTransform,
-    calculateAllAverage,
-    updateCenterPosition
-] = shaderModules;
-
-// export const v_renderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_render.wgsl').then(x => x.text()));
-// export const f_renderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_render.wgsl').then(x => x.text()));
-// export const v_maskRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/マスク/v.wgsl').then(x => x.text()));
-// export const f_maskRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/マスク/f.wgsl').then(x => x.text()));
-// export const v_allSquareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_全ての頂点を四角として表示.wgsl').then(x => x.text()));
-// export const f_textureRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_テクスチャ表示.wgsl').then(x => x.text()));
-// export const v_PSRSquareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_座標・回転・スケールを四角として表示.wgsl').then(x => x.text()));
-// export const v_partSquareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_限られた頂点を四角として表示.wgsl').then(x => x.text()));
-// export const f_squareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_円塗りつぶし.wgsl').then(x => x.text()));
-// export const v_lineRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_線分.wgsl').then(x => x.text()));
-// export const v_modifierMeshRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/モディファイア/v_メッシュ.wgsl').then(x => x.text()));
-// export const v_graphicMeshsMeshRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/グラフィックメッシュ/v_メッシュ.wgsl').then(x => x.text()));
-// export const f_fillRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_単色塗りつぶし.wgsl').then(x => x.text()));
-// export const f_strokeRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_枠線.wgsl').then(x => x.text()));
-// export const v_BBoxRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_BBox.wgsl').then(x => x.text()));
-// export const v_bezierRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_ベジェ.wgsl').then(x => x.text()));
-// export const v_cvsDraw = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/テクスチャのcvs表示/v_canvasDraw.wgsl').then(x => x.text()));
-// export const f_cvsDraw = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/テクスチャのcvs表示/f_canvasDraw.wgsl').then(x => x.text()));
-
-// const circleSelectVertices = GPU.createShaderModule(await fetch('./script/wgsl/compute/頂点の円選択.wgsl').then(x => x.text()));
-// const boxSelectVertices = GPU.createShaderModule(await fetch('./script/wgsl/compute/頂点のボックス選択.wgsl').then(x => x.text()));
-// const calculateAllBBox = GPU.createShaderModule(await fetch('./script/wgsl/compute/全ての頂点からBBoxを計算.wgsl').then(x => x.text()));
-// const calculateLimitBBox = GPU.createShaderModule(await fetch('./script/wgsl/compute/限られた頂点からBBoxを計算.wgsl.wgsl').then(x => x.text()));
-// const modifierTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/モディファイア/モディファイアの変形を適応.wgsl').then(x => x.text()));
-// const rotateModifierTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/回転モディファイアの変形を適応.wgsl').then(x => x.text()));
-// const lineModifierTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/ベジェモディファイア/ベジェモディファイアの変形を適応.wgsl').then(x => x.text()));
-// const adaptAllAnimationToVertices = GPU.createShaderModule(await fetch('./script/wgsl/compute/全ての頂点にアニメーションを適応.wgsl').then(x => x.text()));
-// const setModifierWeightToGraphicMesh = GPU.createShaderModule(await fetch('./script/wgsl/compute/モディファイア/頂点にモディファイアとの関係を作る.wgsl').then(x => x.text()));
-// const setLineModifierWeightToGraphicMesh = GPU.createShaderModule(await fetch('./script/wgsl/compute/ベジェモディファイア/頂点にベジェモディファイアとの関係を作る.wgsl').then(x => x.text()));
-// const animationTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/全てのアニメーション頂点データを更新.wgsl').then(x => x.text()));
-// const baseTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/全てのベース頂点データを更新.wgsl').then(x => x.text()));
-// const calculateAllAverage = GPU.createShaderModule(await fetch('./script/wgsl/compute/全ての頂点の平均.wgsl').then(x => x.text()));
-// const updateCenterPosition = GPU.createShaderModule(await fetch('./script/wgsl/compute/中心位置を変更.wgsl').then(x => x.text()));
+const circleSelectVertices = GPU.createShaderModule(await fetch('./script/wgsl/compute/頂点の円選択.wgsl').then(x => x.text()));
+const boxSelectVertices = GPU.createShaderModule(await fetch('./script/wgsl/compute/頂点のボックス選択.wgsl').then(x => x.text()));
+const calculateAllBBox = GPU.createShaderModule(await fetch('./script/wgsl/compute/全ての頂点からBBoxを計算.wgsl').then(x => x.text()));
+const calculateLimitBBox = GPU.createShaderModule(await fetch('./script/wgsl/compute/限られた頂点からBBoxを計算.wgsl.wgsl').then(x => x.text()));
+const modifierTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/モディファイア/モディファイアの変形を適応.wgsl').then(x => x.text()));
+const rotateModifierTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/回転モディファイアの変形を適応.wgsl').then(x => x.text()));
+const lineModifierTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/ベジェモディファイア/ベジェモディファイアの変形を適応.wgsl').then(x => x.text()));
+const adaptAllAnimationToVertices = GPU.createShaderModule(await fetch('./script/wgsl/compute/全ての頂点にアニメーションを適応.wgsl').then(x => x.text()));
+const setModifierWeightToGraphicMesh = GPU.createShaderModule(await fetch('./script/wgsl/compute/モディファイア/頂点にモディファイアとの関係を作る.wgsl').then(x => x.text()));
+const setLineModifierWeightToGraphicMesh = GPU.createShaderModule(await fetch('./script/wgsl/compute/ベジェモディファイア/頂点にベジェモディファイアとの関係を作る.wgsl').then(x => x.text()));
+const animationTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/全てのアニメーション頂点データを更新.wgsl').then(x => x.text()));
+const baseTransform = GPU.createShaderModule(await fetch('./script/wgsl/compute/全てのベース頂点データを更新.wgsl').then(x => x.text()));
+const calculateAllAverage = GPU.createShaderModule(await fetch('./script/wgsl/compute/全ての頂点の平均.wgsl').then(x => x.text()));
+const updateCenterPosition = GPU.createShaderModule(await fetch('./script/wgsl/compute/中心位置を変更.wgsl').then(x => x.text()));
 
 // グループレイアウトの宣言
 export const f_ts_t = GPU.createGroupLayout([{useShaderTypes: ['f'], type: 'ts'}, {useShaderTypes: ['f'], type: 't'}]);
