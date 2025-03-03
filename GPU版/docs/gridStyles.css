@@ -1,0 +1,94 @@
+.grid-w {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: 1fr 4px 1fr; /* 左右2分割 */
+    grid-template-rows: 1fr; /* 上下1分割 */
+    background-color: #ad3838; /* 枠線用の色 */
+    background-color: #181818;
+}
+
+.grid-resizer-w {
+    width: 4px;
+    height: 100%;
+    background-color: #181818;
+    grid-column: 2 / 3;
+    grid-row: 1;
+    cursor: col-resize;
+}
+
+.grid-w-left {
+    grid-column: 1 / 2; /* 右上 */
+    grid-row: 1;
+    width: 100%;
+    height: 100%;
+    background-color: #ff0000; /* 右下の背景色 */
+    background-color: #181818;
+    overflow: hidden; /* 内容が高さに影響を与えないようにする */
+}
+
+.grid-w-right {
+    grid-column: 3 / 4; /* 右下 */
+    grid-row: 1;
+    width: 100%;
+    height: 100%;
+    background-color: #1100ff; /* 右上の背景色 */
+    background-color: #181818;
+    overflow: hidden; /* 内容が高さに影響を与えないようにする */
+}
+
+/* グリッド縦分割 */
+.grid-h {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: 1fr; /* 左右1分割 */
+    grid-template-rows: 1fr 4px 1fr; /* 上下2分割 */
+    background-color: #4638ad; /* 枠線用の色 */
+    background-color: #181818;
+}
+
+.grid-resizer-h {
+    width: 100%;
+    height: 4px;
+    background-color: #181818;
+    grid-column: 1; /* 右上 */
+    grid-row: 2 / 3;
+    cursor: row-resize;
+}
+
+/* グリッド縦分割の上 */
+.grid-h-top {
+    height: 100%;
+    grid-column: 1; /* 右上 */
+    grid-row: 1 / 2;
+    background-color: #ff0000; /* 右上の背景色 */
+    background-color: #181818;
+    overflow: hidden; /* 内容が高さに影響を与えないようにする */
+}
+
+/* グリッド縦分割の下 */
+.grid-h-bottom {
+    height: 100%;
+    grid-column: 1; /* 右下 */
+    grid-row: 3 / 4;
+    background-color: #0008ff; /* 右下の背景色 */
+    background-color: #181818;
+    overflow: hidden; /* 内容が高さに影響を与えないようにする */
+}
+
+#app {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #ffffff; /* 背景色 */
+    background-color: #181818;
+}
+
+.container {
+    width: 100%;
+    height: 100%;
+}

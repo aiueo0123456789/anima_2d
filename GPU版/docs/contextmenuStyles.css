@@ -1,0 +1,49 @@
+.contextmenu {
+    width: fit-content;
+    position: absolute; /* 必要に応じて位置を調整 */
+}
+
+.menu {
+    width: 100%;
+    background-color: #181818;
+    position: relative; /* 子要素の位置基準にする */
+    overflow: visible; /* サブメニューが親の範囲外に表示されるようにする */
+    padding: 2px;
+}
+
+.menu button {
+    background-color: #00000000;
+    border-width: 0px;
+    width: 100%;
+}
+
+.facemenu {
+    background-color: #181818;
+    border: 1px solid #616161;
+    white-space: nowrap; /* 長いテキストでもサブメニューの幅が変わらないようにする */
+    z-index: 999; /* サブメニューが他の要素より前に表示されるようにする */
+}
+
+/* サブメニューのスタイル */
+.submenu {
+    display: none;
+    position: absolute; /* 親から独立した位置に配置 */
+    left: 100%; /* 親の右横に配置 */
+    top: 0; /* 親の上端に揃える */
+    background-color: #181818;
+    border: 1px solid #5f5f5f;
+    white-space: nowrap; /* 長いテキストでもサブメニューの幅が変わらないようにする */
+    z-index: 1000; /* サブメニューが他の要素より前に表示されるようにする */
+}
+
+.menu:hover > .submenu {
+    display: block;
+}
+
+.menu:hover {
+    background-color: #3a3a3a;
+}
+
+li {
+    list-style: none;
+}

@@ -1,0 +1,19 @@
+グループはグリット一つ
+
+データ構造
+
+Block (オブジェクトが持つグループに対するDOM) []
+ ├── DOM (DOMの参照) html
+ └── updateFn (更新関数) fn
+
+DOMsManager (UIの更新管理) class
+ ├── objectsMap (オブジェクトたち) Map
+ │    ├── object0 (オブジェクト0の参照) Map
+ │    │    ├── グループ0 (オブジェクト0が持つグループ0に対するDOM) Block
+
+メモリ解放
+deleteData = DOMsManager.get(削除オブジェクト);
+deleteData.forEach((value, key) => {
+    value.remove();
+    deleteData.delete(key);
+});

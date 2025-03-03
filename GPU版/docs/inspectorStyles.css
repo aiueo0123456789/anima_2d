@@ -1,0 +1,36 @@
+.inspector {
+    display: flex;
+}
+
+.texture-preview {
+    width: 100%;
+    max-width: 200px;
+    aspect-ratio: 1 / 1;
+    background-color: white;
+}
+
+.animationListContainer {
+    width: 100%;
+    height: 100%;
+    padding: 0px 5px 20px 5px;
+    background-color: rgb(39, 39, 39);
+    overflow: hidden;
+}
+
+.section {
+    width: 100%;
+    display: flex;
+    flex-flow: column;
+    gap: 5px;
+}
+
+.inspector-container {
+    width: 100%;
+    border-radius: 10px;
+    border: 2px solid rgb(62, 62, 62);
+    background-color: rgb(78, 78, 78);
+    display: flex;
+    flex-flow: column;
+    gap: 10px;
+    padding: 5px;
+}

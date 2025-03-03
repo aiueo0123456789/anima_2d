@@ -1,0 +1,18 @@
+.checkbox-list {
+    list-style: none;
+    padding: 0;
+    max-width: 300px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    accent-color: #0077cc; /* Modern browsers checkbox color */
+}

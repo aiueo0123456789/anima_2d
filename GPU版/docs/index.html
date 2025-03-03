@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anima 2D</title>
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/destyle.css@1.0.15/destyle.css"/> -->
+    <link rel="stylesheet" href="
+    destyle.css"/>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="gridStyles.css">
+    <link rel="stylesheet" href="contextmenuStyles.css">
+    <link rel="stylesheet" href="hierarchyStyles.css">
+    <link rel="stylesheet" href="timeLineStyles.css">
+    <link rel="stylesheet" href="inspectorStyles.css">
+    <link rel="website icon" type="png" href="config/画像データ/アプリアイコン.png">
+</head>
+<body>
+    <div class="all">
+        <div id="menubar" class="menubar">
+            <label>プロジェク名
+                <input id="projectName-input" type="text" value="名称未設定">
+            </label>
+            <button id="save-btn">保存</button>
+            <label>開く
+                <input id="open-btn" type="file">
+            </label>
+        </div>
+        <div id="app" class="main">
+        </div>
+    </div>
+    <ul id="contextmenu-container" class="contextmenu">
+    </ul>
+    <script src="script/js/main.js" type="module"></script>
+</body>
+</html>
