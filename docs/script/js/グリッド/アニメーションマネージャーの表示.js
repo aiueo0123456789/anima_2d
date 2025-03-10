@@ -1,69 +1,83 @@
 import { hierarchy } from "../ヒエラルキー.js";
-import { createKeyframeSetTag, createobjectDataAndRelateTag, deleteTagDisappearedObject, updateDataForUI } from "./制御.js";
+import { renderingParameters } from "../レンダリングパラメーター.js";
+import { createCheckbox, createKeyframeSetTag, createobjectDataAndRelateTag, deleteTagDisappearedObject, managerForDOMs, updateDataForUI } from "./制御.js";
 
-export function displayAnimationManager(targetTag, isInit, tags) {
-    if (isInit) {
-        targetTag.replaceChildren();
-        const scrollable = document.createElement("ul");
-        scrollable.classList.add("scrollable","gap-2px");
-        targetTag.append(scrollable);
+function updateAnimationManagerWeight(object, groupID, DOM) {
+    let slider = DOM.slider;
+    let input = DOM.input;
+
+    slider.value = object.weight;
+    input.value = object.weight;
+}
+
+function updateAnimationManager(object, groupID, DOM) {
+
+}
+
+function updateHasKeyCheckbox(object, groupID, DOM, others) {
+    /** @type {HTMLElement} */
+    const checkboxs = DOM;
+    for (let i = 0; i < hierarchy.animationManagers.length; i ++) {
+        checkboxs[i].checked = hierarchy.animationManagers[i].keyframe.hasKeyFromFrame(renderingParameters.keyfarameCount, 1);
     }
+    // DOM.checked = true;
+}
 
-    const scrollableTag = targetTag.querySelector("ul");
+function updateAnimationManagerList(object, groupID, DOM) {
+    /** @type {HTMLElement} */
+    const ul = DOM;
 
-    let offset = 0;
+    const hasKeyCheckboxs = [];
 
     for (const animationManager of hierarchy.animationManagers) {
-        if (tags.has(animationManager)) {
-        } else {
-            const tagsGrou = document.createElement("div");
-            tagsGrou.className = "flex-gap10px";
-            tagsGrou.style.backgroundColor = `rgb(0,0,0,${offset % 2 / 10})`;
-            const nameInputTag = document.createElement("input");
-            nameInputTag.style.width = "150px";
-            nameInputTag.type = "text";
-            nameInputTag.value = animationManager.name;
-            nameInputTag.addEventListener("change", () => {
-                hierarchy.changeObjectName(animationManager, nameInputTag.value);
-            })
-            const weightSliderInputTag = document.createElement("input");
-            weightSliderInputTag.style.width = "100%";
-            weightSliderInputTag.type = "range";
-            weightSliderInputTag.max = 1;
-            weightSliderInputTag.min = 0;
-            weightSliderInputTag.step = 0.00001;
-            createobjectDataAndRelateTag(animationManager, "weight", weightSliderInputTag);
+        let listItem = managerForDOMs.getDOMInObject(animationManager, groupID);
+        if (!listItem) {
+            listItem = document.createElement("ul");
+            const main = document.createElement("div");
+            main.classList.add("flex");
 
-            const weightInputTag = document.createElement("input");
-            weightInputTag.type = "number";
-            weightInputTag.style.width = "60px";
-            weightInputTag.max = 1;
-            weightInputTag.min = 0;
-            weightInputTag.step = 0.00001;
-            createobjectDataAndRelateTag(animationManager, "weight", weightInputTag);
-            // スライダーのイベントリスナーを追加
-            weightSliderInputTag.addEventListener('input', () => {
-                animationManager.weight = Number(weightSliderInputTag.value);
-                weightInputTag.value = Number(weightSliderInputTag.value);
-            });
-            const weightKeyFrameSetTag = createKeyframeSetTag(animationManager, weightInputTag);
+            const name = document.createElement("input");
+            name.type = "text";
+            name.value = animationManager.name;
 
-            const containedAnimationsDiv = document.createElement("ul");
-            containedAnimationsDiv.classList.add("scrollable","gap-2px");
-            containedAnimationsDiv.style.height = "fit-content";
-            containedAnimationsDiv.style.maxHeight = "200px";
-            for (const animation of animationManager.containedAnimations) {
-                const nameTag = document.createElement("p");
-                nameTag.textContent = animation.name;
-                containedAnimationsDiv.append(nameTag);
-            }
-            tagsGrou.append(nameInputTag, weightSliderInputTag, weightInputTag, weightKeyFrameSetTag);
-            tags.set(animationManager, tagsGrou);
-            scrollableTag.append(tagsGrou, containedAnimationsDiv);
+            const weightSlider = document.createElement("input");
+            weightSlider.style.width = "100%";
+            weightSlider.type = "range";
+            weightSlider.max = 1;
+            weightSlider.min = 0;
+            weightSlider.value = 0;
+            weightSlider.step = 0.00001;
+
+            const weightInput = document.createElement("input");
+            weightInput.type = "number";
+            weightInput.value = 0;
+            weightSlider.max = 1;
+            weightSlider.min = 0;
+            weightSlider.step = 0.00001;
+
+            managerForDOMs.set(animationManager, groupID, {slider: weightSlider, input: weightInput}, updateAnimationManagerWeight);
+
+            const hasKeyCheckbox = createCheckbox();
+
+            main.append(name, weightSlider, weightInput, hasKeyCheckbox);
+            const children = document.createElement("ul");
+            children.classList.add("scrollable");
+            listItem.append(main, children);
+            ul.appendChild(listItem);
         }
-        offset ++;
+        hasKeyCheckboxs.push(listItem.querySelector('[name="checkbox"]').querySelector("input"));
     }
+    managerForDOMs.set("現在のフレーム", groupID, hasKeyCheckboxs, updateHasKeyCheckbox);
+}
 
-        deleteTagDisappearedObject(tags);
+export function displayAnimationManager(targetDiv, isInit, tags, config, groupID) {
+    targetDiv.replaceChildren();
+    const scrollable = document.createElement("ul");
+    scrollable.classList.add("scrollable","gap-2px");
+    targetDiv.append(scrollable);
 
+    const scrollableTag = targetDiv.querySelector("ul");
+
+    managerForDOMs.set("アニメーションマネージャー", groupID, scrollableTag, updateAnimationManagerList);
+    managerForDOMs.update("アニメーションマネージャー");
 }

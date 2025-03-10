@@ -10,6 +10,7 @@ class MaskTexture {
         this.texture= GPU.createTexture2D(size,"r8unorm");
         this.textureView = this.texture.createView();
         this.renderingObjects = [];
+        this.useObjects = [];
     }
 }
 
@@ -56,14 +57,19 @@ export class RenderObjectManager {
     deleteMaskTextureFromID(id) {
         for (let i = this.maskTextures.length - 1; i >= 0; i --) {
             if (this.maskTextures[i].id == id) {
-                managerForDOMs.deleteObject(this.maskTextures.splice(i, 1)[0]);
-                managerForDOMs.update(this.maskTextures);
+                this.deleteMaskTexture(this.maskTextures[i]);
                 return ;
             }
         }
     }
 
     deleteMaskTexture(maskTexture) {
+        if (maskTexture.renderingObjects.length || maskTexture.useObjects.length) {
+            console.warn("削除しようとしたマスクは参照されているため削除できません");
+        } else {
+            managerForDOMs.deleteObject(maskTexture);
+            this.maskTextures.splice(this.maskTextures.indexOf(maskTexture), 1);
+        }
     }
 
     searchMaskTextureFromName(name) {

@@ -4,10 +4,12 @@ import { AnimationBlock, VerticesAnimation } from "./アニメーション.js";
 import { vec2 } from "./ベクトル計算.js";
 import { v_sr,c_sr,c_u_u,c_srw,c_srw_sr,c_srw_u_u,c_srw_sr_u_u,v_sr_u, c_sr_sr, baseTransformPipeline } from "./GPUObject.js";
 import { BBox } from "./BBox.js";
-import { setBaseBBox, setParentModifierWeight } from "./オブジェクトで共通の処理.js";
+import { setBaseBBox, setParentModifierWeight, sharedDestroy } from "./オブジェクトで共通の処理.js";
+import { createID } from "./グリッド/制御.js";
 
 export class Modifier {
     constructor(name) {
+        this.id = createID();
         this.name = name;
         this.isInit = false;
         this.type = "モディファイア";
@@ -57,7 +59,7 @@ export class Modifier {
 
     // gc対象にしてメモリ解放
     destroy() {
-        this.animationBlock.destroy();
+        sharedDestroy(this);
         this.name = null;
         this.type = null;
         this.verticesNum = null;

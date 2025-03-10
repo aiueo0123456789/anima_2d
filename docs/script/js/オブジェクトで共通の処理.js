@@ -308,3 +308,8 @@ export function deleteAnimationToObject(object, animation) {
     object.animationBlock.deleteAnimation(animation);
     // managerForDOMs.update(object.animationBlock);
 }
+
+export function sharedDestroy(object) {
+    managerForDOMs.deleteObject(object);
+    object.animationBlock.destroy();
+}

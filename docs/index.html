@@ -4,18 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anima 2D</title>
-    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/destyle.css@1.0.15/destyle.css"/> -->
-    <link rel="stylesheet" href="
-    destyle.css"/>
+    <link rel="stylesheet" href="destyle.css"/>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="gridStyles.css">
     <link rel="stylesheet" href="contextmenuStyles.css">
     <link rel="stylesheet" href="hierarchyStyles.css">
     <link rel="stylesheet" href="timeLineStyles.css">
     <link rel="stylesheet" href="inspectorStyles.css">
+    <link rel="stylesheet" href="viewStyles.css">
     <link rel="website icon" type="png" href="config/画像データ/アプリアイコン.png">
+    <link rel="stylesheet" href="loadStyles.css">
 </head>
 <body>
+    <!-- ロードモーダル -->
+    <div id="loadingModal">
+        <div id="progressMessage"></div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="progressText">0%</div>
+    </div>
+
     <div class="all">
         <div id="menubar" class="menubar">
             <label>プロジェク名

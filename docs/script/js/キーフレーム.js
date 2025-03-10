@@ -11,7 +11,7 @@ export class WeightKeyframe {
         for (let i = 0; i < this.keys.length; i ++) {
             if (frame == this.keys[i].frame) {
                 this.keys[i].data = data;
-                updateDataForUI["タイムライン"] = true;
+                // updateDataForUI["タイムライン"] = true;
                 return ;
             } else if (frame < this.keys[i].frame) {
                 insertIndex = i;
@@ -19,12 +19,12 @@ export class WeightKeyframe {
             }
         }
         this.keys.splice(insertIndex,0,{frame, data});
-        updateDataForUI["タイムライン"] = true;
+        // updateDataForUI["タイムライン"] = true;
     }
 
     deleteKeyframe(key) {
         this.keys.splice(this.keys.indexOf(key),1);
-        updateDataForUI["タイムライン"] = true;
+        // updateDataForUI["タイムライン"] = true;
     }
 
     updateKeyframe(key,newData) {

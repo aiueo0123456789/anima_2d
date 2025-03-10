@@ -1,5 +1,5 @@
 import { GPU, device, format } from '../webGPU.js';
-import { graphicMeshsMeshRenderPipeline, modifierMeshRenderPipeline, renderPipeline,circlesFromAllVerticesRenderPipeline,circlesFromPartVerticesRenderPipeline,lineRenderPipeline,bezierRenderPipeline,BBoxRenderPipeline,sampler, v_u_u_f_ts, activeColorGroup, inactiveColorGroup, activeBBoxColorGroup, inactiveBBoxColorGroup, inactiveRotateModifierColorGroup, activeRotateModifierColorGroup, maskRenderPipeline, boneRenderPipeline, inactiveBoneRendringConfigGroup, activeBoneRendringConfigGroup, partBoneRenderPipeline, rotateModifierRenderPipeline, editRotateModifierColorGroup, v_sr_sr, v_sr } from "../GPUObject.js";
+import { graphicMeshsMeshRenderPipeline, modifierMeshRenderPipeline, renderPipeline,circlesFromAllVerticesRenderPipeline,circlesFromPartVerticesRenderPipeline,lineRenderPipeline,bezierRenderPipeline,BBoxRenderPipeline,sampler, v_u_u_f_ts, activeColorGroup, inactiveColorGroup, activeBBoxColorGroup, inactiveBBoxColorGroup, inactiveRotateModifierColorGroup, activeRotateModifierColorGroup, maskRenderPipeline, boneRenderPipeline, inactiveBoneRendringConfigGroup, activeBoneRendringConfigGroup, partBoneRenderPipeline, rotateModifierRenderPipeline, editRotateModifierColorGroup, v_sr_sr, v_sr, modifierFrameRenderPipeline, modifierFrame2RenderPipeline } from "../GPUObject.js";
 import { hierarchy } from '../ヒエラルキー.js';
 import { activeView, renderObjectManager, stateMachine, toolbar } from '../main.js';
 
@@ -163,110 +163,8 @@ export class Render {
             renderPass.draw(4, 1, 0, 0);
         }
 
-        if (stateMachine.searchStringInNowState("グラフィックメッシュ編集")) {
-            const graphicMesh = stateMachine.state.data.object;
-            if (stateMachine.searchStringInNowState("ウェイトペイント")) {
-                if (graphicMesh.parent.type == "ボーンモディファイア" || graphicMesh.parent.type == "モディファイア") {
-                    if (graphicMesh.isInit && graphicMesh.isHide) {
-                        renderPass.setPipeline(weigthRenderPipeline);
-                        renderPass.setBindGroup(1, graphicMesh.renderWegihtGroup);
-                        renderPass.setBindGroup(2, stateMachine.state.data.weightTargetGroup);
-                        renderPass.setVertexBuffer(0, graphicMesh.v_meshIndexBuffer);
-                        renderPass.draw(graphicMesh.meshesNum * 3, 1, 0, 0);
-
-                        const modifier = graphicMesh.parent;
-                        if (modifier.type == "ボーンモディファイア") {
-                            renderPass.setPipeline(boneRenderPipeline);
-                            renderPass.setBindGroup(1, modifier.GUIrenderGroup);
-                            renderPass.setBindGroup(2, inactiveBoneRendringConfigGroup);
-                            renderPass.draw(4, modifier.boneNum, 0, 0);
-
-                            renderPass.setPipeline(partBoneRenderPipeline);
-                            renderPass.setBindGroup(2, activeBoneRendringConfigGroup);
-                            renderPass.setBindGroup(3, stateMachine.state.data.weightTargetGroup);
-                            renderPass.draw(4, 1, 0, 0);
-                        } else {
-                            renderPass.setBindGroup(1, modifier.GUIMeshRenderGroup);
-                            renderPass.setBindGroup(2, activeBBoxColorGroup);
-                            renderPass.setPipeline(modifierMeshRenderPipeline);
-                            renderPass.draw(4 * 4, modifier.meshesNum, 0, 0); // (4 * 4) 4つの辺を4つの頂点を持つ四角形で表示する
-                            renderPass.setBindGroup(1, modifier.GUIVerticesRenderGroup);
-                            renderPass.setBindGroup(2, inactiveColorGroup);
-                            renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
-                            renderPass.draw(4, modifier.verticesNum, 0, 0);
-                        }
-                    }
-                }
-            } else {
-                renderPass.setBindGroup(1, graphicMesh.GUIMeshRenderGroup);
-                renderPass.setBindGroup(2, toolbar.meshHoveredGroup);
-                renderPass.setPipeline(graphicMeshsMeshRenderPipeline);
-                renderPass.draw(3 * 4, graphicMesh.meshesNum, 0, 0); // (3 * 4) 3つの辺を4つの頂点を持つ四角形で表示する
-                renderPass.setBindGroup(1, graphicMesh.GUIVerticesRenderGroup);
-                renderPass.setBindGroup(2, toolbar.verticesGroup);
-                renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
-                renderPass.draw(4, graphicMesh.verticesNum, 0, 0);
-                if (stateMachine.state.data.selectVerticesIndexs.length) {
-                    renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
-                    renderPass.setBindGroup(2, toolbar.activeVerticesGroup);
-                    renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
-                    renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
-                }
-            }
-        } else if (stateMachine.searchStringInNowState("モディファイア編集")) {
-            const modifier = stateMachine.state.data.object;
-            renderPass.setBindGroup(1, modifier.GUIMeshRenderGroup);
-            renderPass.setBindGroup(2, activeBBoxColorGroup);
-            renderPass.setPipeline(modifierMeshRenderPipeline);
-            renderPass.draw(4 * 4, modifier.meshesNum, 0, 0); // (4 * 4) 4つの辺を4つの頂点を持つ四角形で表示する
-            renderPass.setBindGroup(1, modifier.GUIVerticesRenderGroup);
-            renderPass.setBindGroup(2, inactiveColorGroup);
-            renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
-            renderPass.draw(4, modifier.verticesNum, 0, 0);
-            if (stateMachine.state.data.selectVerticesIndexs.length) {
-                renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
-                renderPass.setBindGroup(2, activeColorGroup);
-                renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
-                renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
-            }
-        } else if (stateMachine.searchStringInNowState("ベジェモディファイア編集")) {
-            const modifier = stateMachine.state.data.object;
-            renderPass.setBindGroup(1, modifier.GUIrenderGroup);
-            renderPass.setBindGroup(2, toolbar.bezierGroup);
-            renderPass.setPipeline(bezierRenderPipeline);
-            renderPass.draw(2 * 50, modifier.pointNum - 1, 0, 0);
-            renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
-            renderPass.setBindGroup(2, inactiveColorGroup);
-            renderPass.draw(4, modifier.verticesNum, 0, 0);
-            if (stateMachine.state.data.selectVerticesIndexs.length) {
-                renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
-                renderPass.setBindGroup(2, activeColorGroup);
-                renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
-                renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
-            }
-        } else if (stateMachine.searchStringInNowState("回転モディファイア編集")) {
-            const modifier = stateMachine.state.data.object;
-            renderPass.setPipeline(rotateModifierRenderPipeline);
-            renderPass.setBindGroup(2, editRotateModifierColorGroup);
-            renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
-            renderPass.draw(4, 1, 0, 0);
-        } else if (stateMachine.searchStringInNowState("ボーンモディファイア編集")) {
-            const modifier = stateMachine.state.data.object;
-            renderPass.setPipeline(boneRenderPipeline);
-            renderPass.setBindGroup(1, modifier.GUIrenderGroup);
-            renderPass.setBindGroup(2, inactiveBoneRendringConfigGroup);
-            renderPass.draw(4, modifier.boneNum, 0, 0);
-            renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
-            renderPass.setBindGroup(2, inactiveColorGroup);
-            renderPass.draw(4, modifier.verticesNum, 0, 0);
-            if (stateMachine.state.data.selectVerticesIndexs.length) {
-                renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
-                renderPass.setBindGroup(2, activeColorGroup);
-                renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
-                renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
-            }
-        } else if (stateMachine.searchStringInNowState("オブジェクト選択")) {
-            if (!stateMachine.state.data.IsHideForGUI) {
+        if (true) {
+            if (!stateMachine.state.data.IsHideForGUI && stateMachine.state.data.hoverObjects) {
                 renderPass.setPipeline(rotateModifierRenderPipeline);
                 renderPass.setBindGroup(2, inactiveRotateModifierColorGroup);
                 for (const modifier of hierarchy.rotateModifiers) {
@@ -296,54 +194,183 @@ export class Render {
                 renderPass.setPipeline(graphicMeshsMeshRenderPipeline);
                 for (const boneModifier of stateMachine.state.data.hoverObjects) {
                     if (boneModifier.type == "ボーンモディファイア") {
-                        // renderPass.setBindGroup(1, boneModifier.GUIMeshRenderGroup);
-                        // renderPass.setBindGroup(2, toolbar.meshHoveredGroup);
-                        // renderPass.draw(3 * 4, boneModifier.meshesNum, 0, 0); // (3 * 4) 3つの辺を4つの頂点を持つ四角形で表示する
+                        renderPass.setBindGroup(1, boneModifier.GUIMeshRenderGroup);
+                        renderPass.setBindGroup(2, toolbar.meshHoveredGroup);
+                        renderPass.draw(3 * 4, boneModifier.meshesNum, 0, 0); // (3 * 4) 3つの辺を4つの頂点を持つ四角形で表示する
+                    }
+                }
+                for (const modifier of stateMachine.state.data.hoverObjects) {
+                    if (modifier.type == "モディファイア") {
                     }
                 }
                 // BBoxの表示
                 renderPass.setBindGroup(2, inactiveBBoxColorGroup);
-                renderPass.setPipeline(BBoxRenderPipeline);
                 for (const modifier of hierarchy.modifiers) {
-                    renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
-                    renderPass.draw(4, 1, 0, 0);
+                    renderPass.setBindGroup(1, modifier.GUIMeshRenderGroup);
+                    renderPass.setPipeline(modifierFrameRenderPipeline);
+                    renderPass.draw(4, (modifier.fineness[0] * 2) + (modifier.fineness[1] * 2), 0, 0); // (4 * 4) 4つの辺を4つの頂点を持つ四角形で表示する
+
+                    renderPass.setPipeline(modifierFrame2RenderPipeline);
+                    renderPass.draw(3, 4, 0, 0);
                 }
                 for (const modifier of hierarchy.lineModifiers) {
+                    renderPass.setPipeline(BBoxRenderPipeline);
+
                     renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
                     renderPass.draw(4, 1, 0, 0);
                 }
                 for (const modifier of hierarchy.boneModifiers) {
+                    renderPass.setPipeline(BBoxRenderPipeline);
+
                     renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
                     renderPass.draw(4, 1, 0, 0);
                 }
-                const object = stateMachine.state.data.object;
-                if (object) {
-                    if (object.type == "グラフィックメッシュ") {
-                        renderPass.setPipeline(graphicMeshsMeshRenderPipeline);
-                        renderPass.setBindGroup(1, object.GUIMeshRenderGroup);
-                        renderPass.setBindGroup(2, toolbar.meshActiveGroup);
-                        renderPass.draw(3 * 4, object.meshesNum, 0, 0); // (3 * 4) 3つの辺を4つの頂点を持つ四角形で表示する
-                    } else if (object.type == "回転モディファイア") {
-                        renderPass.setPipeline(rotateModifierRenderPipeline);
-                        renderPass.setBindGroup(2, activeRotateModifierColorGroup);
-                        renderPass.setBindGroup(1, object.BBoxRenderGroup);
-                        renderPass.draw(4, 1, 0, 0);
-                    } else if (object.type == "ボーンモディファイア") {
-                        renderPass.setPipeline(boneRenderPipeline);
-                        renderPass.setBindGroup(1, object.GUIrenderGroup);
-                        renderPass.setBindGroup(2, activeBoneRendringConfigGroup);
-                        renderPass.draw(4, object.boneNum, 0, 0);
-                        renderPass.setPipeline(BBoxRenderPipeline);
-                        renderPass.setBindGroup(1, object.BBoxRenderGroup);
-                        renderPass.setBindGroup(2, activeBBoxColorGroup);
-                        renderPass.draw(4, 1, 0, 0);
-                    } else {
-                        renderPass.setPipeline(BBoxRenderPipeline);
-                        renderPass.setBindGroup(1, object.BBoxRenderGroup);
-                        renderPass.setBindGroup(2, activeBBoxColorGroup);
-                        renderPass.draw(4, 1, 0, 0);
+            }
+        }
+
+        if (stateMachine.searchStringInNowState("グラフィックメッシュ")) {
+            const graphicMesh = stateMachine.state.data.object;
+            if (stateMachine.searchStringInNowState("選択") || stateMachine.searchStringInNowState("並行移動") || stateMachine.searchStringInNowState("リサイズ") || stateMachine.searchStringInNowState("回転") || stateMachine.searchStringInNowState("ウェイトペイント")) {
+                if (stateMachine.searchStringInNowState("ウェイトペイント")) {
+                    if (graphicMesh.parent.type == "ボーンモディファイア" || graphicMesh.parent.type == "モディファイア") {
+                        if (graphicMesh.isInit && graphicMesh.isHide) {
+                            renderPass.setPipeline(weigthRenderPipeline);
+                            renderPass.setBindGroup(1, graphicMesh.renderWegihtGroup);
+                            renderPass.setBindGroup(2, stateMachine.state.data.weightTargetGroup);
+                            renderPass.setVertexBuffer(0, graphicMesh.v_meshIndexBuffer);
+                            renderPass.draw(graphicMesh.meshesNum * 3, 1, 0, 0);
+    
+                            const modifier = graphicMesh.parent;
+                            if (modifier.type == "ボーンモディファイア") {
+                                renderPass.setPipeline(boneRenderPipeline);
+                                renderPass.setBindGroup(1, modifier.GUIrenderGroup);
+                                renderPass.setBindGroup(2, inactiveBoneRendringConfigGroup);
+                                renderPass.draw(4, modifier.boneNum, 0, 0);
+    
+                                renderPass.setPipeline(partBoneRenderPipeline);
+                                renderPass.setBindGroup(2, activeBoneRendringConfigGroup);
+                                renderPass.setBindGroup(3, stateMachine.state.data.weightTargetGroup);
+                                renderPass.draw(4, 1, 0, 0);
+                            } else {
+                                renderPass.setBindGroup(1, modifier.GUIMeshRenderGroup);
+                                renderPass.setBindGroup(2, activeBBoxColorGroup);
+                                renderPass.setPipeline(modifierMeshRenderPipeline);
+                                renderPass.draw(4 * 4, modifier.meshesNum, 0, 0); // (4 * 4) 4つの辺を4つの頂点を持つ四角形で表示する
+                                renderPass.setBindGroup(1, modifier.GUIVerticesRenderGroup);
+                                renderPass.setBindGroup(2, inactiveColorGroup);
+                                renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
+                                renderPass.draw(4, modifier.verticesNum, 0, 0);
+                            }
+                        }
+                    }
+                } else {
+                    renderPass.setBindGroup(1, graphicMesh.GUIMeshRenderGroup);
+                    renderPass.setBindGroup(2, toolbar.meshHoveredGroup);
+                    renderPass.setPipeline(graphicMeshsMeshRenderPipeline);
+                    renderPass.draw(3 * 4, graphicMesh.meshesNum, 0, 0); // (3 * 4) 3つの辺を4つの頂点を持つ四角形で表示する
+                    renderPass.setBindGroup(1, graphicMesh.GUIVerticesRenderGroup);
+                    renderPass.setBindGroup(2, toolbar.verticesGroup);
+                    renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
+                    renderPass.draw(4, graphicMesh.verticesNum, 0, 0);
+                    if (stateMachine.state.data.selectVerticesIndexs.length) {
+                        renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
+                        renderPass.setBindGroup(2, toolbar.activeVerticesGroup);
+                        renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
+                        renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
                     }
                 }
+            } else {
+                renderPass.setPipeline(graphicMeshsMeshRenderPipeline);
+                renderPass.setBindGroup(1, graphicMesh.GUIMeshRenderGroup);
+                renderPass.setBindGroup(2, toolbar.meshActiveGroup);
+                renderPass.draw(3 * 4, graphicMesh.meshesNum, 0, 0); // (3 * 4) 3つの辺を4つの頂点を持つ四角形で表示する
+            }
+        } else if (stateMachine.searchStringInNowState("モディファイア")) {
+            const modifier = stateMachine.state.data.object;
+            if (stateMachine.searchStringInNowState("選択") || stateMachine.searchStringInNowState("並行移動") || stateMachine.searchStringInNowState("リサイズ") || stateMachine.searchStringInNowState("回転") || stateMachine.searchStringInNowState("ウェイトペイント")) {
+                renderPass.setBindGroup(1, modifier.GUIMeshRenderGroup);
+                renderPass.setBindGroup(2, activeBBoxColorGroup);
+                renderPass.setPipeline(modifierMeshRenderPipeline);
+                renderPass.draw(4 * 4, modifier.meshesNum, 0, 0); // (4 * 4) 4つの辺を4つの頂点を持つ四角形で表示する
+                renderPass.setBindGroup(1, modifier.GUIVerticesRenderGroup);
+                renderPass.setBindGroup(2, inactiveColorGroup);
+                renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
+                renderPass.draw(4, modifier.verticesNum, 0, 0);
+                if (stateMachine.state.data.selectVerticesIndexs.length) {
+                    renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
+                    renderPass.setBindGroup(2, activeColorGroup);
+                    renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
+                    renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
+                }
+            } else {
+                renderPass.setPipeline(BBoxRenderPipeline);
+                renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
+                renderPass.setBindGroup(2, activeBBoxColorGroup);
+                renderPass.draw(4, 1, 0, 0);
+            }
+        } else if (stateMachine.searchStringInNowState("ベジェモディファイア")) {
+            const modifier = stateMachine.state.data.object;
+            if (stateMachine.searchStringInNowState("選択") || stateMachine.searchStringInNowState("並行移動") || stateMachine.searchStringInNowState("リサイズ") || stateMachine.searchStringInNowState("回転") || stateMachine.searchStringInNowState("ウェイトペイント")) {
+                renderPass.setBindGroup(1, modifier.GUIrenderGroup);
+                renderPass.setBindGroup(2, toolbar.bezierGroup);
+                renderPass.setPipeline(bezierRenderPipeline);
+                renderPass.draw(2 * 50, modifier.pointNum - 1, 0, 0);
+                renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
+                renderPass.setBindGroup(2, inactiveColorGroup);
+                renderPass.draw(4, modifier.verticesNum, 0, 0);
+                if (stateMachine.state.data.selectVerticesIndexs.length) {
+                    renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
+                    renderPass.setBindGroup(2, activeColorGroup);
+                    renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
+                    renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
+                }
+            } else {
+                renderPass.setBindGroup(1, modifier.GUIrenderGroup);
+                renderPass.setBindGroup(2, toolbar.bezierGroup);
+                renderPass.setPipeline(bezierRenderPipeline);
+                renderPass.draw(2 * 50, modifier.pointNum - 1, 0, 0);
+                renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
+                renderPass.setBindGroup(2, inactiveColorGroup);
+                renderPass.draw(4, modifier.verticesNum, 0, 0);
+            }
+        } else if (stateMachine.searchStringInNowState("回転モディファイア")) {
+            const modifier = stateMachine.state.data.object;
+            if (stateMachine.searchStringInNowState("選択") || stateMachine.searchStringInNowState("並行移動") || stateMachine.searchStringInNowState("リサイズ") || stateMachine.searchStringInNowState("回転") || stateMachine.searchStringInNowState("ウェイトペイント")) {
+                renderPass.setPipeline(rotateModifierRenderPipeline);
+                renderPass.setBindGroup(2, editRotateModifierColorGroup);
+                renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
+                renderPass.draw(4, 1, 0, 0);
+            } else {
+                renderPass.setPipeline(rotateModifierRenderPipeline);
+                renderPass.setBindGroup(2, activeRotateModifierColorGroup);
+                renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
+                renderPass.draw(4, 1, 0, 0);
+            }
+        } else if (stateMachine.searchStringInNowState("ボーンモディファイア")) {
+            const modifier = stateMachine.state.data.object;
+            if (stateMachine.searchStringInNowState("選択") || stateMachine.searchStringInNowState("並行移動") || stateMachine.searchStringInNowState("リサイズ") || stateMachine.searchStringInNowState("回転") || stateMachine.searchStringInNowState("ウェイトペイント")) {
+                renderPass.setPipeline(boneRenderPipeline);
+                renderPass.setBindGroup(1, modifier.GUIrenderGroup);
+                renderPass.setBindGroup(2, inactiveBoneRendringConfigGroup);
+                renderPass.draw(4, modifier.boneNum, 0, 0);
+                renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);
+                renderPass.setBindGroup(2, inactiveColorGroup);
+                renderPass.draw(4, modifier.verticesNum, 0, 0);
+                if (stateMachine.state.data.selectVerticesIndexs.length) {
+                    renderPass.setPipeline(circlesFromPartVerticesRenderPipeline);
+                    renderPass.setBindGroup(2, activeColorGroup);
+                    renderPass.setBindGroup(3, stateMachine.state.data.selectVerticesIndexsGroup);
+                    renderPass.draw(4, stateMachine.state.data.selectVerticesIndexs.length, 0, 0);
+                }
+            } else {
+                renderPass.setPipeline(boneRenderPipeline);
+                renderPass.setBindGroup(1, modifier.GUIrenderGroup);
+                renderPass.setBindGroup(2, activeBoneRendringConfigGroup);
+                renderPass.draw(4, modifier.boneNum, 0, 0);
+                renderPass.setPipeline(BBoxRenderPipeline);
+                renderPass.setBindGroup(1, modifier.BBoxRenderGroup);
+                renderPass.setBindGroup(2, activeBBoxColorGroup);
+                renderPass.draw(4, 1, 0, 0);
             }
         }
         renderPass.setPipeline(circlesFromAllVerticesRenderPipeline);

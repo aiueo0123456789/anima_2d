@@ -1,0 +1,32 @@
+.mainGrid {
+    display: grid;
+    grid-template-columns: auto 1fr; /* 列で分割 */
+    width: 100%;
+    height: 100%;
+}
+
+.mainGrid canvas {
+    grid-column: 2/3;
+    width: 100%;
+    height: 100%;
+}
+
+.toolbar {
+    grid-column: 1/2;
+    width: fit-content;
+    height: 100%;
+    padding: 5px;
+    gap: 5px;
+    display: flex;
+    flex-flow: column;
+}
+
+.toolbar li {
+    width: 25px;
+    height: 25px;
+    background-color: rgb(103, 103, 103);
+}
+
+.toolbar li:hover {
+    background-color: rgb(137, 137, 137);
+}

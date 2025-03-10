@@ -2,10 +2,12 @@ import { device,GPU } from "./webGPU.js";
 import { Children } from "./子要素.js";
 import { AnimationBlock, VerticesAnimation } from "./アニメーション.js";
 import { v_sr,c_sr_sr,c_sr,c_srw,c_srw_sr } from "./GPUObject.js";
-import { setBaseBBox, setParentModifierWeight } from "./オブジェクトで共通の処理.js";
+import { setBaseBBox, setParentModifierWeight, sharedDestroy } from "./オブジェクトで共通の処理.js";
+import { createID } from "./グリッド/制御.js";
 
 export class LineModifier {
     constructor(name) {
+        this.id = createID();
         this.name = name;
         this.isInit = false;
         this.isChange = false;
@@ -44,7 +46,7 @@ export class LineModifier {
 
     // gc対象にしてメモリ解放
     destroy() {
-        this.animationBlock.destroy();
+        sharedDestroy(this);
         this.name = null;
         this.CPUBaseVerticesPositionData = null;
         this.s_baseVerticesPositionBuffer = null;

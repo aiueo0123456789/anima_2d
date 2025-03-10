@@ -2,10 +2,13 @@ import { device,GPU } from "./webGPU.js";
 import { AnimationBlock, VerticesAnimation } from "./アニメーション.js";
 import { v_sr_sr,c_srw,c_srw_sr,c_srw_sr_sr,v_sr_sr_f_t,v_sr, c_sr,v_sr_sr_f_t_t_u, isNotTexture, c_sr_sr } from "./GPUObject.js";
 import { renderObjectManager } from "./main.js";
-import { setBaseBBox, setParentModifierWeight } from "./オブジェクトで共通の処理.js";
+import { setBaseBBox, setParentModifierWeight, sharedDestroy } from "./オブジェクトで共通の処理.js";
+import { createID } from "./グリッド/制御.js";
+import { indexOfSplice } from "./utility.js";
 
 export class GraphicMesh {
     constructor(name) {
+        this.id = createID();
         this.name = name;
         this.type = "グラフィックメッシュ";
         this.isInit = false;
@@ -50,8 +53,9 @@ export class GraphicMesh {
 
         this.parent = "";
 
-        this.maskRenderingTargetTexture = null;
-        this.maskTargetTexture = renderObjectManager.searchMaskTextureFromName("base");
+        this.renderingTargetTexture = null;
+        this.maskTargetTexture = null;
+        this.changeMaskTexture(renderObjectManager.searchMaskTextureFromName("base"));
         this.maskTypeBuffer = GPU.createUniformBuffer(4, undefined, ["f32"]);
         GPU.writeBuffer(this.maskTypeBuffer, new Float32Array([0])); // 0　マスク 反転マスク
 
@@ -60,10 +64,13 @@ export class GraphicMesh {
 
     // gc対象にしてメモリ解放
     destroy() {
+        sharedDestroy(this);
         this.delete = true;
-        this.animationBlock.destroy();
-        if (this.maskRenderingTargetTexture) {
-            this.maskRenderingTargetTexture.renderingObjects.splice(this.maskRenderingTargetTexture.renderingObjects.indexOf(this), 1);
+        if (this.maskTargetTexture) {
+            indexOfSplice(this.maskTargetTexture.useObjects, this);
+        }
+        if (this.renderingTargetTexture) {
+            indexOfSplice(this.renderingTargetTexture.renderingObjects, this);
         }
         this.name = null;
         this.type = null;
@@ -100,7 +107,7 @@ export class GraphicMesh {
     async init(data) {
         if (data.texture) {
             this.texture = GPU.createTexture2D([data.texture.width, data.texture.height, 1],"rgba8unorm");
-            await GPU.cpyBase64ToTexture(this.texture, data.texture.data);
+            await GPU.copyBase64ToTexture(this.texture, data.texture.data);
         } else {
             this.textureView = isNotTexture;
         }
@@ -120,11 +127,10 @@ export class GraphicMesh {
 
         this.textureView = this.texture.createView(); // これを先に処理しようとするとエラーが出る
 
-        if (data.maskRenderingTargetTexture) {
-            this.maskRenderingTargetTexture = renderObjectManager.searchMaskTextureFromName(data.maskRenderingTargetTexture);
-            this.maskRenderingTargetTexture.renderingObjects.push(this);
+        if (data.renderingTargetTexture) {
+            this.changeRenderingTarget(renderObjectManager.searchMaskTextureFromName(data.renderingTargetTexture));
         }
-        this.maskTargetTexture = renderObjectManager.searchMaskTextureFromName(data.maskTargetTexture);
+        this.changeMaskTexture(renderObjectManager.searchMaskTextureFromName(data.maskTargetTexture));
 
         this.isInit = true;
         this.isChange = true;
@@ -156,16 +162,23 @@ export class GraphicMesh {
         setParentModifierWeight(this);
     }
 
-    changeMaskTargetTexture(target) {
+    changeMaskTexture(target) {
+        if (this.maskTargetTexture) {
+            indexOfSplice(this.maskTargetTexture.useObjects, this);
+        }
         this.maskTargetTexture = target;
-        this.renderGroup = GPU.createGroup(v_sr_sr_f_t_t_u, [this.RVrt_coBuffer, {item: this.s_baseVerticesUVBuffer, type: 'b'}, {item: this.textureView, type: 't'}, {item: this.maskTargetTexture.textureView, type: 't'}, {item: this.maskTypeBuffer, type: "b"}]);
+        this.maskTargetTexture.useObjects.push(this);
+        if (this.isInit) {
+            this.renderGroup = GPU.createGroup(v_sr_sr_f_t_t_u, [this.RVrt_coBuffer, {item: this.s_baseVerticesUVBuffer, type: 'b'}, {item: this.textureView, type: 't'}, {item: this.maskTargetTexture.textureView, type: 't'}, {item: this.maskTypeBuffer, type: "b"}]);
+        }
     }
 
-    changeMaskmaskRenderingTargetTexture(target) {
-        this.maskRenderingTargetTexture = target;
-        if (this.maskRenderingTargetTexture) {
-            this.maskRenderingTargetTexture.renderingObjects.push(this);
+    changeRenderingTarget(target) {
+        if (this.renderingTargetTexture) {
+            indexOfSplice(this.renderingTargetTexture.renderingObjects, this);
         }
+        this.renderingTargetTexture = target;
+        this.renderingTargetTexture.renderingObjects.push(this);
         this.isChange = true;
     }
 
@@ -251,8 +264,9 @@ export class GraphicMesh {
             meshIndex: [...await GPU.getU32BufferData(this.s_meshIndexBuffer)],
             animationKeyDatas: animationKeyDatas,
             modifierEffectData: modifierEffectData,
-            texture: await GPU.textureToBase64(this.texture),
-            maskRenderingTargetTexture: this.maskRenderingTargetTexture ? this.maskRenderingTargetTexture.name : null,
+            texture: await GPU.textureToBase64(this.texture, false),
+            // texture: await GPU.textureToRGBA(this.texture),
+            renderingTargetTexture: this.renderingTargetTexture ? this.renderingTargetTexture.name : null,
             maskTargetTexture: this.maskTargetTexture.name,
         };
     }

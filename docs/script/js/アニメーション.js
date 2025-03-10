@@ -10,6 +10,15 @@ export class AnimationBlock {
         this.useClass = useClass;
     }
 
+    destroy() {
+        for (const animation of this.animationBlock) {
+            animation.destroy();
+        }
+        this.animationBlock.length = 0;
+        this.belongObject = null;
+        this.useClass = null;
+    }
+
     appendAnimation() {
         const animation = new this.useClass("名称未設定", this.belongObject);
         animation.emptyInit();
@@ -106,9 +115,9 @@ export class VerticesAnimation {
     }
 
     getWorldVerticesPositionBuffer() {
-        const reslutBuffer = GPU.copyBufferToNewBuffer(this.belongObject.s_baseVerticesPositionBuffer);
-        GPU.runComputeShader(adaptAllAnimationToVerticesPipeline, [GPU.createGroup(c_srw, [{item: reslutBuffer, type: "b"}]), GPU.createGroup(c_sr_u, [{item: this.s_verticesAnimationBuffer, type: 'b'}, {item: GPU.createUniformBuffer(4, [1], ["f32"]), type: 'b'}])], Math.ceil(this.belongObject.verticesNum / 64));
-        return reslutBuffer;
+        const resultBuffer = GPU.copyBufferToNewBuffer(this.belongObject.s_baseVerticesPositionBuffer);
+        GPU.runComputeShader(adaptAllAnimationToVerticesPipeline, [GPU.createGroup(c_srw, [{item: resultBuffer, type: "b"}]), GPU.createGroup(c_sr_u, [{item: this.s_verticesAnimationBuffer, type: 'b'}, {item: GPU.createUniformBuffer(4, [1], ["f32"]), type: 'b'}])], Math.ceil(this.belongObject.verticesNum / 64));
+        return resultBuffer;
     }
 }
 

@@ -81,7 +81,6 @@ export class GridInterior {
         this.modeSelectTag = document.createElement('select');
         setModeSelectOption(this.modeSelectTag, initMode);
 
-
         this.mainDiv = document.createElement("div");
         this.mainDiv.className = "grid-main";
 
@@ -93,20 +92,25 @@ export class GridInterior {
 
         this.modeSelectTag.addEventListener('change', () => {
             if (this.modeSelectTag.value == "ビュー") {
+                this.mainDiv.className = "grid-main";
+                this.mainDiv.replaceChildren();
+                managerForDOMs.deleteGroup(this.groupID);
                 resetTag(this.tags);
                 this.targetTag.innerHTML = "";
                 gridInteriorObjects.splice(gridInteriorObjects.indexOf(this), 1);
                 new View(this.targetTag);
             } else {
+                this.mainDiv.className = "grid-main";
+                this.mainDiv.replaceChildren();
+                managerForDOMs.deleteGroup(this.groupID);
                 resetTag(this.tags);
-                this.modeDiv.innerHTML = "";
                 this.modeDiv.append(this.modeSelectTag, this.createModeToolBar(this.modeSelectTag.value));
                 this.tags.clear();
-                modes[this.modeSelectTag.value](this.mainDiv, true, this.tags,this.config, this.groupID);
+                modes[this.modeSelectTag.value](this.mainDiv, true, this.tags, this.config, this.groupID);
             }
         });
 
-        modes[initMode](this.mainDiv,true,this.tags,this.config);
+        modes[this.modeSelectTag.value](this.mainDiv, true, this.tags, this.config, this.groupID);
 
         this.mainDiv.addEventListener('contextmenu', (e) => {
             e.preventDefault();
@@ -149,7 +153,8 @@ export class GridInterior {
 
     update(updateData) {
         if (updateData[this.modeSelectTag.value]) {
-            modes[this.modeSelectTag.value](this.mainDiv,false,this.tags,this.config);
+            managerForDOMs.deleteGroup(this.groupID);
+            modes[this.modeSelectTag.value](this.mainDiv, false, this.tags, this.config, this.groupID);
         }
     }
 }
@@ -332,6 +337,8 @@ export function createCheckbox(type = "custom-checkbox") {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     const label = document.createElement("label");
+    label.classList.add("box");
+    label.setAttribute("name", "checkbox");
     const span = document.createElement("span");
     span.classList.add(type);
     label.append(checkbox,span);
@@ -402,6 +409,27 @@ export function createSection(target, sectionName, section) {
     target.append(containerDiv);
 
     return containerDiv;
+}
+
+export function createIcon(target, imgName) {
+    const container = document.createElement("div");
+    container.classList.add("icon");
+    const icon = document.createElement("img");
+    icon.src = `config/画像データ/ui_icon/${imgName}.png`;
+    container.append(icon);
+    target.append(container);
+}
+
+export function createToolBar(target, tools) {
+    const container = document.createElement("ul");
+    container.classList.add("toolbar");
+    for (let i = 0; i < 10; i ++) {
+        const item = document.createElement("li");
+        createIcon(item, tools[i]);
+        container.append(item);
+    }
+    target.append(container);
+    return container;
 }
 
 function createDoubleClickInput(fn) {
@@ -495,6 +523,9 @@ export class View {
 
         this.cvs = document.createElement("canvas");
         this.cvs.className = "renderingTarget";
+
+        this.toolbar = createToolBar(this.gridMainTag, ["選択", "並行移動", "拡大縮小", "回転"]);
+        this.gridMainTag.classList.add( "mainGrid");
         this.gridMainTag.append(this.cvs)
         this.targetTag.append(this.modeDiv,this.gridMainTag);
         this.cvsRect = this.cvs.getBoundingClientRect();
@@ -610,5 +641,20 @@ export class EditorPreference {
 
         this.activeVerticesColorBuffer = GPU.createUniformBuffer(16, [1, 0.5, 0, 0.8], ["f32"]);
         this.activeVerticesGroup = GPU.createGroup(v_u_f_u,[{item: this.verticesSizeBuffer, type: "b"},{item: this.activeVerticesColorBuffer, type: "b"}]);
+    }
+}
+
+export function updateLoad(text,value) {
+    let progress = Math.min(value, 100); // 100% を超えないように制限
+    document.getElementById("progressMessage").innerText = text;
+    // document.getElementById("progressMessage").textContent = text;
+    document.getElementById("progressBar").style.width = progress + "%";
+    document.getElementById("progressText").innerText = progress + "%";
+    if (progress >= 100) {
+        setTimeout(() => {
+            document.getElementById("loadingModal").style.display = "none";
+        }, 10); // 少し待ってからモーダルを消す
+    } else {
+        document.getElementById("loadingModal").style.display = "flex";
     }
 }

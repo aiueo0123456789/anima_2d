@@ -2,11 +2,12 @@ import { hierarchy } from './ヒエラルキー.js';
 import { RenderObjectManager } from './レンダー.js';
 
 import { createGridsObject,gridUpdate  } from "./グリッド/grid.js";
-import { GridInterior, EditorPreference, updateDataForUI, updateForUI, View } from "./グリッド/制御.js";
+import { GridInterior, EditorPreference, updateDataForUI, updateForUI, View, managerForDOMs, updateLoad } from "./グリッド/制御.js";
 import { StateMachine } from './状態遷移.js';
 import { renderingParameters } from './レンダリングパラメーター.js';
-import { logAccess } from './参照管理.js';
 import { updateObjectFromAnimation } from './オブジェクトで共通の処理.js';
+
+updateLoad("", 100);
 
 // 構造の作成
 const layout =
@@ -61,29 +62,38 @@ export function activeViewUpdate(view) {
 }
 
 async function init() {
+    updateLoad("読み込み", 0);
     hierarchy.destroy();
     for (const data of loadData.modifiers) {
         await hierarchy.setSaveObject(data,"");
     }
+    updateLoad("読み込み", 10);
     for (const data of loadData.lineModifiers) {
         await hierarchy.setSaveObject(data,"");
     }
+    updateLoad("読み込み", 20);
     for (const data of loadData.rotateModifiers) {
         await hierarchy.setSaveObject(data,"");
     }
+    updateLoad("読み込み", 30);
     for (const data of loadData.graphicMeshs) {
         await hierarchy.setSaveObject(data,"");
     }
+    updateLoad("読み込み", 50);
     for (const data of loadData.animationManager) {
         hierarchy.setSaveObject(data,"");
     }
+    updateLoad("読み込み", 60);
     hierarchy.addEmptyObject("ボーンモディファイア");
     hierarchy.setHierarchy(loadData.hierarchy);
     loadData = null;
+    updateLoad("読み込み", 70);
     Object.keys(updateDataForUI).forEach(key => {
         updateDataForUI[key] = true;
     });
-    logAccess(hierarchy.graphicMeshs[1]);
+    updateLoad("読み込み", 80);
+    managerForDOMs.allUpdate();
+    updateLoad("読み込み", 100);
     update();
 }
 
@@ -132,7 +142,7 @@ document.addEventListener('keydown',function(event) {
             keysDown["undo"] = true;
         }
         event.preventDefault(); // デフォルトの動作を防ぐ場合
-    } else if (event.key == "s") {
+    } else if (isCtrlOrCmd && event.key == "s") {
         save();
         event.preventDefault(); // デフォルトの動作を防ぐ場合
     } else {
@@ -152,6 +162,7 @@ document.addEventListener('keyup',function(event) {
 });
 
 async function save() {
+    updateLoad("書き出し", 0);
     // JSONデータを作成
     const data = {
         hierarchy: hierarchy.getSaveData(),
@@ -186,12 +197,15 @@ async function save() {
             })
         ),
     };
+    updateLoad("書き出し", 90);
 
     // JSONデータを文字列化
     const jsonString = JSON.stringify(data, null, 2);
 
     // Blobを作成
     const blob = new Blob([jsonString], { type: "application/json" });
+
+    updateLoad("書き出し", 95);
 
     // ダウンロード用のリンクを作成
     const a = document.createElement("a");
@@ -200,6 +214,7 @@ async function save() {
 
     // リンクをクリックしてダウンロードを開始
     a.click();
+    updateLoad("書き出し", 100);
 
     // メモリ解放
     URL.revokeObjectURL(a.href);

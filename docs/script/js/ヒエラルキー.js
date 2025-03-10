@@ -5,9 +5,12 @@ import { RotateModifier } from "./回転モディファイア.js";
 import { AnimationManager } from "./アニメーションマネージャー.js";
 import { updateObject,setParentModifierWeight, searchAnimation } from "./オブジェクトで共通の処理.js";
 import { managerForDOMs, updateDataForUI } from "./グリッド/制御.js";
-import { VerticesAnimation, RotateAnimation } from "./アニメーション.js";
-import { renderingParameters } from "./レンダリングパラメーター.js";
 import { BoneModifier } from "./ボーンモディファイア.js";
+
+export function changeObjectName(object, newName) {
+    object.name = newName;
+    managerForDOMs.update(object);
+}
 
 class Hierarchy {
     constructor() {
@@ -20,6 +23,7 @@ class Hierarchy {
         this.surface = [];
         this.renderingOrder = [];
         this.allObject = [];
+        this.isChangeObjectsZindex = true;
     }
 
     // 全てのオブジェクトをgc対象にしてメモリ解放
@@ -46,6 +50,8 @@ class Hierarchy {
             return [this.lineModifiers, this.lineModifiers.indexOf(object)];
         } else if (object.type == "回転モディファイア") {
             return [this.rotateModifiers, this.rotateModifiers.indexOf(object)];
+        } else if (object.type == "ボーンモディファイア") {
+            return [this.boneModifiers, this.boneModifiers.indexOf(object)];
         } else if (object.type == "アニメーションマネージャー") {
             return [this.animationManagers, this.animationManagers.indexOf(object)];
         }
@@ -56,6 +62,7 @@ class Hierarchy {
         const [array, indexe] = this.searchObject(object);
         array.splice(indexe, 1);
         this.deleteHierarchy(object);
+        console.log("削除",object)
         object.destroy();
     }
 
@@ -93,6 +100,7 @@ class Hierarchy {
     }
 
     updateRenderingOrder(fineness) {
+        if (!this.isChangeObjectsZindex) return ;
         const createEmptyArray = (length) => {
             const result = [];
             for (let i = 0; i < length; i ++) {
@@ -122,6 +130,13 @@ class Hierarchy {
                 this.renderingOrder.push(data[0]);
             }
         }
+        this.isChangeObjectsZindex = false;
+        managerForDOMs.update("表示順番");
+    }
+
+    updateZindex(graphicMesh, zIndexForNew) {
+        graphicMesh.zIndex = zIndexForNew;
+        this.isChangeObjectsZindex = true;
     }
 
     searchObjectFromName(name, type) {
@@ -155,6 +170,15 @@ class Hierarchy {
                 if (anmationManager.name == name) return anmationManager;
             }
             console.warn("アニメーションマネージャーが見つかりませんでした")
+        }
+        return null;
+    }
+
+    searchObjectFromID(id) {
+        for (const object of this.allObject) {
+            if (object.id == id) {
+                return object;
+            }
         }
         return null;
     }
@@ -197,6 +221,7 @@ class Hierarchy {
             await object.init(data);
             this.graphicMeshs.push(object);
             this.renderingOrder.push(object);
+            this.isChangeObjectsZindex = true;
         } else if (data.type == "モディファイア") {
             object = new Modifier(data.name);
             object.init(data);
@@ -221,7 +246,7 @@ class Hierarchy {
     addEmptyObject(type) {
         let object;
         if (type == "アニメーションマネージャー") {
-            updateDataForUI["アニメーションマネージャー"] = true;
+            managerForDOMs.update("タイムライン-チャンネル");
             object = new AnimationManager("名称未設定");
             this.animationManagers.push(object);
         } else {
@@ -229,6 +254,7 @@ class Hierarchy {
             if (type == "グラフィックメッシュ") {
                 object = new GraphicMesh("名称未設定");
                 this.graphicMeshs.push(object);
+                this.isChangeObjectsZindex = true;
             } else if (type == "モディファイア") {
                 object = new Modifier("名称未設定");
                 this.modifiers.push(object);
@@ -250,9 +276,9 @@ class Hierarchy {
     changeObjectName(object, newName) {
         object.name = newName;
         if (object.type == "アニメーションマネージャー") {
-            updateDataForUI["アニメーションマネージャー"] = true;
+            managerForDOMs.update("タイムライン-チャンネル");
         } else {
-            updateDataForUI["ヒエラルキー"] = true;
+            managerForDOMs.update("ヒエラルキー");
             updateDataForUI["オブジェクト"] = true;
             updateDataForUI["インスペクタ"] = true;
         }
@@ -268,7 +294,8 @@ class Hierarchy {
     }
 
     addHierarchy(parentObject, addObject) { // ヒエラルキーに追加
-        updateDataForUI["ヒエラルキー"] = true;
+        managerForDOMs.update("ヒエラルキー");
+
         if (parentObject == "") {
             this.surface.push(addObject);
             addObject.parent = "";
@@ -292,12 +319,19 @@ class Hierarchy {
     }
 
     deleteHierarchy(object) { // ヒエラルキーから削除
-        updateDataForUI["ヒエラルキー"] = true;
         if (object.parent) {
             object.parent.children.deleteChild(object);
         } else {
             this.surface.splice(this.surface.indexOf(object), 1);
         }
+        if (object.children) {
+            // 削除対象の子要素を削除対象の親要素の子要素にする
+            for (const child of object.children.objects) {
+                this.addHierarchy(object.parent, child);
+            }
+            object.children.objects.length = 0;
+        }
+        managerForDOMs.update("ヒエラルキー");
     }
 
     runHierarchy(useAnimationManager = true) { // 伝播の実行

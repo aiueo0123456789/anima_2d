@@ -1,54 +1,39 @@
-import { hierarchy } from '../ヒエラルキー.js';
+import { changeObjectName, hierarchy } from '../ヒエラルキー.js';
 import { stateMachine } from '../main.js';
-import { createCheckbox, deleteTagDisappearedObject } from './制御.js';
+import { createCheckbox, deleteTagDisappearedObject, managerForDOMs } from './制御.js';
 import { activeOrClear } from '../コンテキストメニュー/制御.js';
 
 export function select(a,b,bool) {
     return bool ? a : b;
 }
 
-export function displayHierarchy(targetTag, isInit = false, tags) {
-    console.log("displayHierarchy")
-    if (isInit) {
-        targetTag.className = 'grid-main'; // クラスを全て消す
-        targetTag.replaceChildren();
-        const scrollable = document.createElement("ul");
-        // scrollable.classList.add("scrollable","gap-2px","color2");
-        scrollable.classList.add("scrollable","color2");
-        targetTag.append(scrollable);
+function updateObject(object, groupID, DOM) {
+    /** @type {HTMLElement} */
+    const container = DOM.querySelector("div");
+
+    const nameInputTag = container.querySelector("input[type=text]");
+    if (nameInputTag.value != object.name) nameInputTag.value = object.name;
+    if (object.type == "グラフィックメッシュ") {
+        const zIndexInputTag = container.querySelector("input[type=number]");
+        if (zIndexInputTag.value != object.zIndex) zIndexInputTag.value = object.zIndex;
     }
+}
 
-    const scrollableTag = targetTag.querySelector("ul");
+function updateHierarchy(objects, groupID, DOM) {
+    /** @type {HTMLElement} */
+    const ul = DOM;
 
-    let offset = 0;
-    const childrenRoop = (children, depth) => {
-        children.forEach((object) => {
-            if (tags.has(object)) {
-                const allTag = tags.get(object);
-                const tagsGroup = allTag.querySelector("div");
-                activeOrClear(tagsGroup, stateMachine.state.data.object == object);
+    const pairData = new Map();
 
-                const nameInputTag = tagsGroup.querySelector("input[type=text]");
-                if (nameInputTag.value != object.name) nameInputTag.value = object.name;
-                if (object.type == "グラフィックメッシュ") {
-                    const zIndexInputTag = tagsGroup.querySelector("input[type=number]");
-                    if (zIndexInputTag.value != object.zIndex) zIndexInputTag.value = object.zIndex;
-                }
-                if (!(object.parent == allTag.dataset.parentName || object.parent.name == allTag.dataset.parentName)) {
-                    if (object.parent) {
-                        tags.get(object.parent).querySelector("ul").append(allTag);
-                        allTag.dataset.parentName = object.parent.name;
-                    } else {
-                        scrollableTag.append(allTag);
-                        allTag.dataset.parentName = "";
-                    }
-                }
-            } else {
-                console.log("タグの生成")
-                const allTag = document.createElement("li");
+    // タグがないオブジェクトにタグを作る
+    for (const object of hierarchy.allObject) {
+        if (object.type != "アニメーションマネージャー") {
+            let listItem = managerForDOMs.getDOMInObject(object, groupID);
+
+            if (!listItem) {
+                listItem = document.createElement("li");
                 const tagsGroup = document.createElement("div");
                 tagsGroup.className = "hierarchy";
-                activeOrClear(tagsGroup, stateMachine.state.data.object == object);
 
                 const childrenTag = document.createElement("ul");
                 childrenTag.className = "children";
@@ -75,22 +60,22 @@ export function displayHierarchy(targetTag, isInit = false, tags) {
                 depthAndNameDiv.append(nameInputTag, typeImgTag);
 
                 if (object.type == "グラフィックメッシュ") {
-                    const zIindexInputTag = document.createElement("input");
-                    zIindexInputTag.className = "hierarchy-zIndex";
-                    zIindexInputTag.type = "number";
-                    zIindexInputTag.min = 0;
-                    zIindexInputTag.max = 1000;
-                    zIindexInputTag.step = 1;
-                    zIindexInputTag.value = object.zIndex;
+                    const zIndexInput = document.createElement("input");
+                    zIndexInput.className = "hierarchy-zIndex";
+                    zIndexInput.type = "number";
+                    zIndexInput.min = 0;
+                    zIndexInput.max = 1000;
+                    zIndexInput.step = 1;
+                    zIndexInput.value = object.zIndex;
 
                     const hideCheckTag = createCheckbox();
                     hideCheckTag.classList.add("hierarchy-hide");
                     hideCheckTag.checked = object.isHide;
 
-                    tagsGroup.append(childrenHidBtn,depthAndNameDiv, zIindexInputTag, hideCheckTag);
+                    tagsGroup.append(childrenHidBtn,depthAndNameDiv, zIndexInput, hideCheckTag);
 
-                    zIindexInputTag.addEventListener('change', () => {
-                        object.zIndex = Number(zIindexInputTag.value);
+                    zIndexInput.addEventListener('change', () => {
+                        hierarchy.updateZindex(object, Number(zIndexInput.value));
                     });
 
                     hideCheckTag.addEventListener('change', () => {
@@ -110,29 +95,59 @@ export function displayHierarchy(targetTag, isInit = false, tags) {
                 });
 
                 nameInputTag.addEventListener('blur', () => {
-                    hierarchy.changeObjectName(object, nameInputTag.value);
+                    changeObjectName(object, nameInputTag.value);
                     nameInputTag.setAttribute('readonly', true);
                 });
 
-                allTag.append(tagsGroup, childrenTag);
-                tags.set(object, allTag);
+                listItem.append(tagsGroup, childrenTag);
 
-                if (object.parent) {
-                    tags.get(object.parent).querySelector("ul").append(allTag);
-                    allTag.dataset.parentName = object.parent.name;
-                } else {
-                    scrollableTag.append(allTag);
-                    allTag.dataset.parentName = "";
-                }
+                listItem.dataset.parentName = "none";
+
+                ul.append(listItem)
+
+                managerForDOMs.set(object, groupID, listItem, updateObject);
             }
-            offset++;
-            if (Array.isArray(object.children?.objects)) {
-                childrenRoop(object.children.objects, depth + 1);
+            activeOrClear(listItem.querySelector("div"), stateMachine.state.data.object == object);
+            activeOrClear(listItem.querySelector("ul"), stateMachine.state.data.object == object, true);
+            pairData.set(object, listItem);
+        }
+    }
+
+    const fn = (targetID, target, objects) => {
+        for (const child of objects) {
+            /** @type {HTMLElement} */
+            const childTag = pairData.get(child);
+            if (childTag.dataset.parentName != targetID) {
+                childTag.dataset.parentName = targetID;
+                target.append(childTag);
             }
-        });
-    };
+            if (child.children) {
+                objectChildrenRoop(child);
+            }
+        }
+    }
 
-    childrenRoop(hierarchy.surface, 0);
+    const objectChildrenRoop = (object = "") => {
+        if (object == "") {
+            fn("hierarchySurface", ul, hierarchy.surface);
+        } else {
+            fn(object.id, pairData.get(object).querySelector("ul"), object.children.objects);
+        }
+    }
 
-    deleteTagDisappearedObject(tags);
+    objectChildrenRoop();
+}
+
+export function displayHierarchy(targetTag, isInit, tags, config, groupID) {
+    console.log("displayHierarchy")
+    targetTag.className = 'grid-main'; // クラスを全て消す
+    targetTag.replaceChildren();
+    const scrollable = document.createElement("ul");
+    scrollable.classList.add("scrollable","color2");
+    targetTag.append(scrollable);
+
+    const scrollableTag = targetTag.querySelector("ul");
+
+    managerForDOMs.set("ヒエラルキー",groupID,scrollableTag,updateHierarchy);
+    managerForDOMs.update("ヒエラルキー");
 }

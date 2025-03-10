@@ -27,6 +27,13 @@
     z-index: 9999;
 }
 
+.channel-main {
+    width: 100%;
+    height: 100%;
+    background-color: #727272;
+    z-index: 9999;
+}
+
 .timeline-container {
     grid-column: 2 / 3; /* 右上 */
     grid-row: 1;
@@ -71,7 +78,7 @@
 
 .timeline {
     position: absolute;
-    width: 100%;
+    width: fit-content;
     height: 100%;
     overflow-y: auto; /* スクロールを有効にする */
     background-color: rgb(71, 71, 71);
@@ -79,7 +86,7 @@
     flex-flow: column;
 }
 
-.timeline li {
+.timeline ul {
     position: relative;
     display: flex;
     width: 100%;
@@ -96,17 +103,6 @@
     height: 100%;
 }
 
-.time-nowframes::before {
-    content: var(--label, "");
-    cursor: pointer;
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #0043de;
-    color: white;
-    padding: 0 5px;
-}
-
 .time-nowframes {
     display: flex;
     position: absolute;
@@ -116,6 +112,19 @@
     transform: translate(-50%, -50%);
     background-color: #2c2c2c;
     z-index: 99999;
+}
+
+.time-nowframes::before {
+    font-size: 140%;
+    content: var(--label, "");
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #0043de;
+    border-radius: 5px;
+    color: white;
+    padding: 0 5px;
 }
 
 .time-frames {
@@ -135,12 +144,12 @@
 }
 
 .time-frames *::before {
+    font-size: 140%;
     content: var(--label, "");
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    background-color: #555;
     color: white;
     padding: 0 5px;
 }
@@ -166,8 +175,8 @@
 
 .timeline-animtionKey {
     position: absolute;
-    /* width: 80%; */
-    height: 80%;
+    width: 10px;
+    border-radius: 100%;
     aspect-ratio: 1 / 1;
     transform: translate(-50%, -50%);
     top: 50%;

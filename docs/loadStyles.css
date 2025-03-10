@@ -1,0 +1,46 @@
+/* モーダルの背景 */
+#loadingModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 100000;
+}
+
+/* ゲージの枠 */
+.progress-container {
+    width: 80%;
+    max-width: 400px;
+    height: 20px;
+    background: #444;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+/* ゲージ本体 */
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background: #3792f3;
+    /* transition: width 0.2s ease; */
+}
+
+/* 進行度の数値 */
+#progressText {
+    color: white;
+    font-size: 18px;
+    margin-top: 10px;
+}
+
+/* 進行度の数値 */
+#progressMessage {
+    color: white;
+    font-size: 18px;
+    margin-top: 10px;
+}

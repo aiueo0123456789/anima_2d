@@ -1,7 +1,7 @@
-import { graphicMeshsMeshRenderPipeline } from "../GPUObject.js";
 import { keysDown, renderObjectManager } from "../main.js";
 import { activeOrClear } from "../コンテキストメニュー/制御.js";
-import { createLabeledInput, createList, createSection, managerForDOMs } from "./制御.js";
+import { changeObjectName } from "../ヒエラルキー.js";
+import { createIcon, createLabeledInput, createList, createSection, managerForDOMs } from "./制御.js";
 
 function hexToRgba(hex, alpha = 1) {
     // #を取り除く
@@ -34,9 +34,7 @@ function updateMaskTextureList(object, groupID, DOM) {
             listItem.dataset.selected = "false";
             listItem.classList.add("flex-gap10px");
 
-            const iconTag = document.createElement("img");
-            iconTag.src = "config/画像データ/ui_icon/マスク.png";
-            iconTag.classList.add("icon")
+            createIcon(listItem, "マスク");
 
             const nameInputTag = document.createElement("input");
             nameInputTag.type = "text";
@@ -49,7 +47,7 @@ function updateMaskTextureList(object, groupID, DOM) {
             });
 
             nameInputTag.addEventListener('blur', () => {
-                // changeObjectName(maskTexture, nameInputTag.value);
+                changeObjectName(maskTexture, nameInputTag.value);
                 nameInputTag.setAttribute('readonly', true);
             });
 
@@ -67,7 +65,7 @@ function updateMaskTextureList(object, groupID, DOM) {
                 }
                 managerForDOMs.update(object);
             })
-            listItem.append(iconTag, nameInputTag);
+            listItem.append(nameInputTag);
 
             maskTextureList.appendChild(listItem);
 
@@ -78,10 +76,7 @@ function updateMaskTextureList(object, groupID, DOM) {
 }
 
 export function displayProperty(scrollableDiv, isInit, tags, config, groupID) {
-    if (isInit) {
-    }
     scrollableDiv.innerHTML = "";
-
     scrollableDiv.className = "";
     scrollableDiv.classList.add("grid-main","scrollable","gap-2px","color3","pa-10px","pa-r-0px");
 

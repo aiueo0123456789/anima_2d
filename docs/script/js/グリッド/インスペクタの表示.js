@@ -1,12 +1,12 @@
 import { renderObjectManager } from "../main.js";
 import { GPU } from "../webGPU.js";
 import { appendAnimationToObject, deleteAnimationToObject, updateCenterPosition } from "../オブジェクトで共通の処理.js";
-import { hierarchy } from "../ヒエラルキー.js";
+import { changeObjectName, hierarchy } from "../ヒエラルキー.js";
 import { stateMachine } from '../main.js';
 import { createMeshFromTexture } from '../画像からメッシュを作る.js';
 import { vec2 } from "../ベクトル計算.js";
 import { TextureToCVS } from "../キャンバスにテクスチャを表示.js";
-import { createCheckbox, createLabeledInput, createLabeledSelect, createMinButton, createSection, managerForDOMs, resetTag, updateDataForUI } from "./制御.js";
+import { createCheckbox, createIcon, createLabeledInput, createLabeledSelect, createMinButton, createSection, managerForDOMs, resetTag, updateDataForUI } from "./制御.js";
 import { select } from "./ヒエラルキーの表示.js";
 import { ResizerForDOM } from "./resizer.js";
 import { activeOrClear } from "../コンテキストメニュー/制御.js";
@@ -75,9 +75,7 @@ function updateAnimationBlockDOM(object, groupID, DOM) {
             listItem.dataset.objectID = animation.id;
             listItem.classList.add("flex-gap10px");
 
-            const iconTag = document.createElement("img");
-            iconTag.src = "config/画像データ/ui_icon/頂点アニメーション.png";
-            iconTag.classList.add("icon")
+            createIcon(listItem, "頂点アニメーション");
 
             const nameInputTag = document.createElement("input");
             nameInputTag.type = "text";
@@ -101,7 +99,7 @@ function updateAnimationBlockDOM(object, groupID, DOM) {
             const managerSelectTag = document.createElement("select");
             if (true) {
                 const sleectElement = document.createElement('option'); // h1要素に配列の要素を設定
-                sleectElement.value = ""; // h1要素に配列の要素を設定
+                sleectElement.value = "none"; // h1要素に配列の要素を設定
                 sleectElement.textContent = "なし"; // h1要素に配列の要素を設定
                 if (!animation.belongAnimationManager) {
                     sleectElement.selected = true;
@@ -110,7 +108,7 @@ function updateAnimationBlockDOM(object, groupID, DOM) {
             }
             hierarchy.animationManagers.forEach(manager => {
                 const sleectElement = document.createElement('option'); // h1要素に配列の要素を設定
-                sleectElement.value = manager.name; // h1要素に配列の要素を設定
+                sleectElement.value = manager.id; // h1要素に配列の要素を設定
                 sleectElement.textContent = manager.name; // h1要素に配列の要素を設定
                 if (animation.belongAnimationManager == manager) {
                     sleectElement.selected = true;
@@ -119,10 +117,10 @@ function updateAnimationBlockDOM(object, groupID, DOM) {
             })
 
             managerSelectTag.addEventListener("change", () => {
-                if (managerSelectTag.value) {
-                    hierarchy.setAnimationManagerLink(hierarchy.searchObjectFromName(managerSelectTag.value, "アニメーションマネージャー"), animation);
-                } else {
+                if (managerSelectTag.value == "none") {
                     hierarchy.deleteAnimationManagerLink(animation);
+                } else {
+                    hierarchy.setAnimationManagerLink(hierarchy.searchObjectFromID(managerSelectTag.value), animation);
                 }
                 managerForDOMs.update(animation);
             })
@@ -141,7 +139,7 @@ function updateAnimationBlockDOM(object, groupID, DOM) {
             listItem.addEventListener("click", () => {
                 stateMachine.externalInputs["オブジェクトのアニメーションキー選択"] = animation;
             })
-            listItem.append(iconTag, nameInputTag, weightSliderInputTag, managerSelectTag, transformCheck);
+            listItem.append(nameInputTag, weightSliderInputTag, managerSelectTag, transformCheck);
 
             animationList.appendChild(listItem);
 
@@ -214,25 +212,18 @@ function updateBasicDOM(object, groupID, DOM) {
     basicSection.querySelector('[name="変形の許可"]').querySelector("input").checked = object.baseTransformIsLock;
 }
 
-function changeObjectName(object, newName) {
-    object.name = newName;
-    managerForDOMs.update(object);
-}
-
 function eventFnChangeObjectName(target, object) {
     object.name = target.value;
     managerForDOMs.update(object);
 }
 
-export function displayInspector(scrollableDiv, isInit, tags, config, groupID) {
-    if (isInit) {
-        scrollableDiv.innerHTML = "";
-    }
-    scrollableDiv.replaceChildren();
-
+export function displayInspector(targetDiv, isInit, tags, config, groupID) {
     const object = stateMachine.state.data.object;
-
     if (!object) return;
+    const scrollableDiv = document.createElement("ul");
+    managerForDOMs.set(object, groupID, scrollableDiv, updateBasicDOM);
+
+    targetDiv.append(scrollableDiv);
 
     scrollableDiv.className = "";
     scrollableDiv.classList.add("grid-main","scrollable","gap-2px","color3","pa-10px","pa-r-0px");
@@ -342,7 +333,7 @@ export function displayInspector(scrollableDiv, isInit, tags, config, groupID) {
         zIndexInput.step = 1;
         zIndexInput.value = object.zIndex;
         zIndexInput.addEventListener("change", () => {
-            object.zIndex = Number(zIndexInput.value);
+            hierarchy.updateZindex(object, Number(zIndexInput.value));
         })
 
         const textureInput = createLabeledInput(meshSection,"画像を選択", "file");
@@ -399,8 +390,8 @@ export function displayInspector(scrollableDiv, isInit, tags, config, groupID) {
             object.setMeshData(...meshData);
         })
 
-        const maskRenderingTargetTextureSelectTag = createLabeledSelect(meshSection,"マスク用のレンダリングターゲット:");
-        const maskTexturesSelectTag = createLabeledSelect(meshSection,"マスク用のテクスチャ:");
+        const renderingTargetTextureSelectTag = createLabeledSelect(meshSection,"レンダリングターゲット:");
+        const maskTexturesSelectTag = createLabeledSelect(meshSection,"マスク:");
 
         renderObjectManager.maskTextures.forEach(textureData => {
             const sleectElement = document.createElement('option'); // h1要素に配列の要素を設定
@@ -416,18 +407,18 @@ export function displayInspector(scrollableDiv, isInit, tags, config, groupID) {
             const sleectElement = document.createElement('option'); // h1要素に配列の要素を設定
             sleectElement.value = textureData.name; // h1要素に配列の要素を設定
             sleectElement.textContent = textureData.name; // h1要素に配列の要素を設定
-            if (object.maskRenderingTargetTexture == textureData) {
+            if (object.renderingTargetTexture == textureData) {
                 sleectElement.selected = true;
             }
-            maskRenderingTargetTextureSelectTag.append(sleectElement);
+            renderingTargetTextureSelectTag.append(sleectElement);
         })
 
-        maskRenderingTargetTextureSelectTag.addEventListener('change', () => {
-            object.changeMaskmaskRenderingTargetTexture(renderObjectManager.searchMaskTextureFromName(maskRenderingTargetTextureSelectTag.value));
+        renderingTargetTextureSelectTag.addEventListener('change', () => {
+            object.changeRenderingTarget(renderObjectManager.searchMaskTextureFromName(renderingTargetTextureSelectTag.value));
         });
 
         maskTexturesSelectTag.addEventListener('change', () => {
-            object.changeMaskTargetTexture(renderObjectManager.searchMaskTextureFromName(maskTexturesSelectTag.value));
+            object.changeMaskTexture(renderObjectManager.searchMaskTextureFromName(maskTexturesSelectTag.value));
         });
 
         createSection(scrollableDiv, "グラフィックメッシュ", meshSection);
@@ -516,8 +507,6 @@ export function displayInspector(scrollableDiv, isInit, tags, config, groupID) {
 
         managerForDOMs.set(object.animationBlock, groupID, animationList, updateAnimationBlockDOM);
         updateAnimationBlockDOM(object.animationBlock, groupID, animationList); // 初期化
-
-        managerForDOMs.set(object, groupID, scrollableDiv, updateBasicDOM);
 
         animationSection.appendChild(animationsBox);
         const test = createLabeledInput(animationSection, "テスト", "text");

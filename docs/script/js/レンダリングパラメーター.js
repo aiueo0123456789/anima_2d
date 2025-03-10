@@ -1,5 +1,5 @@
 import { toolbar } from "./main.js";
-import { updateDataForUI } from "./グリッド/制御.js";
+import { managerForDOMs, updateDataForUI } from "./グリッド/制御.js";
 import { hierarchy } from "./ヒエラルキー.js";
 
 export let keyfarameCount = 0;
@@ -19,6 +19,7 @@ class RenderingParameters {
         if (!this.isReplay) return ;
         this.keyfarameCount += this.keyfarameStep;
         this.keyfarameCount %= toolbar.animtionEndFrame;
+        managerForDOMs.update("現在のフレーム");
     }
 }
 

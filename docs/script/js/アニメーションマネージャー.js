@@ -1,9 +1,11 @@
 import { searchAnimation } from "./オブジェクトで共通の処理.js";
 import { WeightKeyframe } from "./キーフレーム.js";
+import { createID, managerForDOMs } from "./グリッド/制御.js";
 import { hierarchy } from "./ヒエラルキー.js";
 
 export class AnimationManager {
     constructor(name) {
+        this.id = createID();
         this.type = "アニメーションマネージャー";
         this.name = name;
         this.weight = 0;
@@ -21,6 +23,7 @@ export class AnimationManager {
     }
 
     update() {
+        managerForDOMs.update(this);
         for (const animation of this.containedAnimations) {
             animation.weight = this.weight;
         }

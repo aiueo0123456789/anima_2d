@@ -58,23 +58,23 @@ export function displayObjects(targetTag, isInit = false, tags, option = {filter
             depthAndNameDiv.append(nameInputTag, typeImgTag);
 
             if (object.type == "グラフィックメッシュ") {
-                const zIindexInputTag = document.createElement("input");
-                zIindexInputTag.className = "hierarchy-zIndex";
-                zIindexInputTag.type = "number";
-                zIindexInputTag.min = 0;
-                zIindexInputTag.max = 1000;
-                zIindexInputTag.step = 1;
-                zIindexInputTag.value = object.zIndex;
+                const zIndexInput = document.createElement("input");
+                zIndexInput.className = "hierarchy-zIndex";
+                zIndexInput.type = "number";
+                zIndexInput.min = 0;
+                zIndexInput.max = 1000;
+                zIndexInput.step = 1;
+                zIndexInput.value = object.zIndex;
 
                 const hideCheckTag = document.createElement("input");
                 hideCheckTag.className = "hierarchy-hide";
                 hideCheckTag.type = "checkbox";
                 hideCheckTag.checked = object.isHide;
 
-                tagsGroup.append(depthAndNameDiv, zIindexInputTag, hideCheckTag);
+                tagsGroup.append(depthAndNameDiv, zIndexInput, hideCheckTag);
 
-                zIindexInputTag.addEventListener('change', () => {
-                    object.zIndex = Number(zIindexInputTag.value);
+                zIndexInput.addEventListener('change', () => {
+                    hierarchy.updateZindex(object, Number(zIndexInput.value));
                 });
 
                 hideCheckTag.addEventListener('change', () => {

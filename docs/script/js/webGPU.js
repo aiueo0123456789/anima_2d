@@ -14,13 +14,13 @@ class WebGPU {
     setBaseStruct(code) {
         const allReplace = (strings, targetStrings, newStrings = "") => {
             let checkString = "";
-            let reslut = "";
+            let result = "";
             for (const string of strings) {
                 if (checkString.length >= targetStrings.length) {
                     if (checkString == targetStrings) {
-                        reslut += newStrings;
+                        result += newStrings;
                     } else {
-                        reslut += checkString[0];
+                        result += checkString[0];
                     }
                     checkString = checkString.slice(1) + string;
                 } else {
@@ -28,9 +28,9 @@ class WebGPU {
                 }
             }
             if (checkString != targetStrings) {
-                reslut += checkString[0];
+                result += checkString[0];
             }
-            return reslut;
+            return result;
         }
         function extractBetween(text, start, end) {
             const regex = new RegExp(`${start}(.*?)${end}`, "g");
@@ -76,16 +76,22 @@ class WebGPU {
         let index = 0;
         for (let i = 0; i < bufferLength;i ++) {
             for (const bitType of struct) {
-                if (bitType == "u32") {
+                if (bitType == "u8") {
+                    view.setUint8(offset, array[index], true);
+                    index ++;
+                    offset ++;
+                } else if (bitType == "u32") {
                     view.setUint32(offset, array[index], true);
                     index ++;
+                    offset += 4;
                 } else if (bitType == "f32") {
                     view.setFloat32(offset, array[index], true);
                     index ++;
+                    offset += 4;
                 } else if (bitType == "padding") {
                     view.setFloat32(offset, 1, true);
+                    offset += 4;
                 }
-                offset += 4;
             }
         }
 
@@ -195,15 +201,15 @@ class WebGPU {
             throw new TypeError('Loaded image is not an instance of HTMLImageElement.');
         }
 
-        const reslutTexture = this.createTexture2D([img.width,img.height,1],"rgba8unorm");
+        const resultTexture = this.createTexture2D([img.width,img.height,1],"rgba8unorm");
 
         device.queue.copyExternalImageToTexture(
             { source: img},
-            { texture: reslutTexture, origin: [0, 0, 0] },
+            { texture: resultTexture, origin: [0, 0, 0] },
             [img.width,img.height,1]
         );
 
-        return reslutTexture;
+        return resultTexture;
     }
 
     async imagesToSkyBoxTextures(imagePaths) {
@@ -877,21 +883,99 @@ class WebGPU {
         return [atlasTexture, atlasRowCol];
     }
 
-    async textureToBase64(texture) {
-        function uint8ArrayToImageData(uint8Array, width, height, alignedBytesPerRow) {
-            const bytesPerPixel = 4; // RGBA
-            const rowData = new Uint8ClampedArray(width * height * bytesPerPixel);
-
-            // 各行をコピーして余分なパディングをスキップ
-            for (let y = 0; y < height; y++) {
-                const srcStart = y * alignedBytesPerRow;
-                const destStart = y * width * bytesPerPixel;
-                rowData.set(uint8Array.subarray(srcStart, srcStart + width * bytesPerPixel), destStart);
+    decompression(data) {
+        function base64ToUint8Array(base64) {
+            // Base64文字列をデコードしてバイナリ文字列に変換
+            const binaryString = atob(base64);
+            // バイナリ文字列をUint8Arrayに変換
+            const uint8Array = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                uint8Array[i] = binaryString.charCodeAt(i);
             }
 
-            return new ImageData(rowData, width, height);
+            const dataView = new DataView(uint8Array.buffer);
+
+            const zeroNum = dataView.getUint32(0, true);
+            const result = new Uint8Array(zeroNum + dataView.byteLength - 4);
+            for (let i = 0; i < zeroNum; i ++) {
+                result[i] = 0;
+            }
+            for (let i = 0; i < dataView.byteLength - 4; i ++) {
+                result[zeroNum + i] = dataView.getUint8(4 + i, true);
+            }
+            return result;
         }
 
+        // Base64文字列をImageBitmapに変換
+        const sectionData = data.split("_");
+        const pixelData = [];
+        for (const base64 of sectionData) {
+            const uint8Array = base64ToUint8Array(base64);
+            pixelData.push(uint8Array);
+        }
+        return pixelData;
+    }
+
+    compression(data) {
+        function dataToBase64(data) {
+            let strings = [];
+            for (const bit of data) {
+                let binaryString = "";
+                for (let i = 0; i < bit.length; i++) {
+                    binaryString += String.fromCharCode(bit[i]);
+                }
+                strings.push(btoa(binaryString));
+            }
+            return strings.join("_");
+        }
+
+        let b = data;
+        // 圧縮1(前との差)
+        // let b = new Uint8Array(data.length);
+        // b[0] = data[0];
+        // for (let i = 1; i < data.length; i ++) {
+        //     b[i] = numberToUint8(data[i] - data[i - 1]);
+        // }
+        // return dataToBase64(data);
+
+        let result = [];
+        let count = 0;
+
+        const appendBitData = (zeroNum, data) => {
+            count += zeroNum + data.length;
+            const buffer = new ArrayBuffer(4 + data.length); // u32, u8...
+            const view = new DataView(buffer);
+            view.setUint32(0, zeroNum, true);
+            for (let i = 0; i < data.length; i ++) {
+                view.setUint8(4 + i, data[i], true);
+            }
+            result.push(new Uint8Array(buffer));
+        }
+
+        let arrayData = [];
+
+        let i = 0;
+        while (i < b.length) {
+            let zeroNum = 0;
+            while (b[i] == 0 && i < b.length) {
+                zeroNum ++;
+                i ++;
+            }
+            const arrayData = [];
+            while (b[i] != 0 && i < b.length) {
+                arrayData.push(b[i]);
+                i ++;
+            }
+            appendBitData(zeroNum,arrayData);
+        }
+        arrayData.length = 0;
+        if (i != count) {
+            throw Error(`ずれ発生${i},${count},[${result.length}]`);
+        }
+        return dataToBase64(result);
+    }
+
+    async textureToBase64(texture, option = true) {
         const alignedBytesPerRow = Math.ceil((texture.width * 4) / 256) * 256;
         const stagingBuffer = device.createBuffer({
             size: alignedBytesPerRow * texture.height,
@@ -910,53 +994,169 @@ class WebGPU {
         const arrayBuffer = stagingBuffer.getMappedRange();
         const uint8Array = new Uint8Array(arrayBuffer);
 
-        // Canvasに描画してPNG形式でエクスポート
-        const canvas = document.createElement('canvas');
-        canvas.width = texture.width;
-        canvas.height = texture.height;
-        const context = canvas.getContext('2d');
+        if (option) {
+            for (let i = 0; i < uint8Array.length; i += 4) {
+                if (uint8Array[i + 3] == 0) { // 透明度だった場合
+                    for (let j = 0; j < 3; j ++) {
+                        uint8Array[i + j] = 0;
+                    }
+                }
+            }
+        }
 
-        // 修正箇所：ImageData作成時にalignedBytesPerRowを考慮
-        const imageData = uint8ArrayToImageData(uint8Array, texture.width, texture.height, alignedBytesPerRow);
-        context.fillStyle = "white"; // 透明部分を白背景に設定
-        context.putImageData(imageData, 0, 0);
-
-        const base64String = canvas.toDataURL('image/png'); // PNG形式を指定
+        const base64String = this.compression(uint8Array);
         stagingBuffer.unmap();
 
+        // console.log("base64", base64String)
         return {data: base64String, width: texture.width, height: texture.height}; // "data:image/png;base64,..." の形式で返される
     }
 
-    async cpyBase64ToTexture(texture, base64String) {
-        if (!base64String.startsWith("data:image/")) {
-            // プレフィックスを自動的に追加（例: PNG形式として処理）
-            base64String = "data:image/png;base64," + base64String;
+    async copyBase64ToTexture(texture, base64String) {
+        function base64ToUint8Array(base64) {
+            // Base64文字列をデコードしてバイナリ文字列に変換
+            const binaryString = atob(base64);
+            // バイナリ文字列をUint8Arrayに変換
+            const uint8Array = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                uint8Array[i] = binaryString.charCodeAt(i);
+            }
+
+            const dataView = new DataView(uint8Array.buffer);
+
+            const zeroNum = dataView.getUint32(0, true);
+            const result = new Uint8Array(zeroNum + dataView.byteLength - 4);
+            for (let i = 0; i < zeroNum; i ++) {
+                result[i] = 0;
+            }
+            for (let i = 0; i < dataView.byteLength - 4; i ++) {
+                result[zeroNum + i] = dataView.getUint8(4 + i, true);
+            }
+            return result;
         }
+
+        const alignedBytesPerRow = Math.ceil((texture.width * 4) / 256) * 256;
 
         // Base64文字列をImageBitmapに変換
-        const image = await createImageBitmap(await fetch(base64String).then(res => res.blob()));
-
-        // ImageBitmapのサイズがテクスチャに合うか確認
-        if (image.width !== texture.width || image.height !== texture.height) {
-            throw new Error("Image size does not match the texture size.");
+        const sectionData = base64String.split("_");
+        const pixelData = new Uint8Array(alignedBytesPerRow * texture.height);
+        let offset = 0;
+        for (const base64 of sectionData) {
+            const uint8Array = base64ToUint8Array(base64);
+            pixelData.set(uint8Array, offset);
+            offset += uint8Array.byteLength;
+        }
+        if (offset != alignedBytesPerRow * texture.height) {
+            console.warn("テクスチャデータの破損が見つかりました", offset, alignedBytesPerRow * texture.height);
         }
 
-        // コマンドエンコーダを作成してデータをコピー
-        device.queue.copyExternalImageToTexture(
-            { source: image },
-            { texture: texture },
+        // 2. GPUバッファを作成
+        const buffer = device.createBuffer({
+            size: alignedBytesPerRow * texture.height,
+            usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+        });
+        // 3. バッファにUint8Arrayのデータをセット
+        device.queue.writeBuffer(buffer, 0, pixelData);
+        // 4. コマンドエンコーダーの作成
+        const commandEncoder = device.createCommandEncoder();
+        // 5. テクスチャへのコピーコマンド
+        commandEncoder.copyBufferToTexture(
             {
-                width: image.width,
-                height: image.height,
-                depthOrArrayLayers: 1,
-            }
+                buffer: buffer,
+                offset: 0,
+                bytesPerRow: alignedBytesPerRow, // 1行あたりのバイト数
+                rowsPerImage: texture.height,
+            },
+            {
+                texture: texture,
+                mipLevel: 0,
+                origin: { x: 0, y: 0, z: 0 },
+            },
+            { width: texture.width, height: texture.height, depthOrArrayLayers: 1 }
         );
-
-        base64String = null;
-        image.close();
+        // 6. コマンドの実行
+        const commandBuffer = commandEncoder.finish();
+        device.queue.submit([commandBuffer]);
     }
-}
 
+    async getTextureData(texture) {
+        const alignedBytesPerRow = Math.ceil((texture.width * 4) / 256) * 256;
+        const stagingBuffer = device.createBuffer({
+            size: alignedBytesPerRow * texture.height,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        commandEncoder.copyTextureToBuffer(
+            { texture, mipLevel: 0, origin: { x: 0, y: 0, z: 0 } },
+            { buffer: stagingBuffer, bytesPerRow: alignedBytesPerRow, rowsPerImage: texture.height },
+            { width: texture.width, height: texture.height, depthOrArrayLayers: 1 }
+        );
+        device.queue.submit([commandEncoder.finish()]);
+
+        await stagingBuffer.mapAsync(GPUMapMode.READ);
+        const arrayBuffer = stagingBuffer.getMappedRange();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        const r = uint8Array.slice();
+        stagingBuffer.unmap();
+        return r;
+    }
+
+    async checkT(texture1, texture2) {
+        const t1 = await this.getTextureData(texture1);
+        const t2 = await this.getTextureData(texture2);
+
+        for (let i = 0; i < t1.length; i += 4) {
+            let c1 = [t1[i] * t1[i + 3], t1[i + 1] * t1[i + 3], t1[i + 2] * t1[i + 3]];
+            let c2 = [t2[i] * t2[i + 3], t2[i + 1] * t2[i + 3], t2[i + 2] * t2[i + 3]];
+
+            // for (let j = 0; j < 3; j ++) {
+            //     if (c1[j] != c2[j]) {
+            //         console.log(c1, c2, i)
+            //         console.log(t1.slice(i - 12, i + 12));
+            //         console.log(t2.slice(i - 12, i + 12));
+            //         return false;
+            //     }
+            // }
+            for (let j = 0; j < 3; j ++) {
+                if (c1[j] != 0) {
+                    console.log(c1, c2, i)
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // async copyBase64ToTexture(texture, base64String) {
+    //     if (!base64String.startsWith("data:image/")) {
+    //         // プレフィックスを自動的に追加（例: PNG形式として処理）
+    //         base64String = "data:image/png;base64," + base64String;
+    //     }
+
+    //     // Base64文字列をImageBitmapに変換
+    //     const image = await createImageBitmap(await fetch(base64String).then(res => res.blob()));
+
+    //     // ImageBitmapのサイズがテクスチャに合うか確認
+    //     if (image.width !== texture.width || image.height !== texture.height) {
+    //         throw new Error("Image size does not match the texture size.");
+    //     }
+
+    //     // コマンドエンコーダを作成してデータをコピー
+    //     device.queue.copyExternalImageToTexture(
+    //         { source: image },
+    //         { texture: texture },
+    //         {
+    //             width: image.width,
+    //             height: image.height,
+    //             depthOrArrayLayers: 1,
+    //         }
+    //     );
+
+    //     base64String = null;
+    //     image.close();
+    // }
+}
 const adapter = await navigator.gpu.requestAdapter();
 
 export const device = await adapter.requestDevice();
@@ -965,3 +1165,11 @@ export const format = navigator.gpu.getPreferredCanvasFormat();
 console.log(format)
 
 export const GPU = new WebGPU();
+
+console.log(
+    GPU.decompression(GPU.compression([
+        0,0,0,0,255,255,255,255,
+        0,0,200,200,150,150,150,
+        255,0,200,200,150,150,150,
+    ]))
+)

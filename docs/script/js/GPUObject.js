@@ -13,6 +13,8 @@ export const v_partSquareRenderShaderModule = GPU.createShaderModule(await fetch
 export const f_squareRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_円塗りつぶし.wgsl').then(x => x.text()));
 export const v_lineRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/v_線分.wgsl').then(x => x.text()));
 export const v_modifierMeshRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/モディファイア/v_メッシュ.wgsl').then(x => x.text()));
+export const v_modifierFrameRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/モディファイア/v_枠の表示.wgsl').then(x => x.text()));
+export const v_modifierFrame2RenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/モディファイア/v_枠2の表示 .wgsl').then(x => x.text()));
 export const v_graphicMeshsMeshRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/グラフィックメッシュ/v_メッシュ.wgsl').then(x => x.text()));
 export const f_fillRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_単色塗りつぶし.wgsl').then(x => x.text()));
 export const f_strokeRenderShaderModule = GPU.createShaderModule(await fetch('./script/wgsl/レンダー/f_枠線.wgsl').then(x => x.text()));
@@ -114,6 +116,8 @@ export const BBoxRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr, v_
 export const lineRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr, v_u_f_u], v_lineRenderShaderModule, f_fillRenderShaderModule, [], "2d", "s");
 export const graphicMeshsMeshRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr_sr, v_u_f_u], v_graphicMeshsMeshRenderShaderModule, f_fillRenderShaderModule, [], "2d", "s");
 export const modifierMeshRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr_u, v_u_f_u], v_modifierMeshRenderShaderModule, f_fillRenderShaderModule, [], "2d", "s");
+export const modifierFrameRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr_u, v_u_f_u], v_modifierFrameRenderShaderModule, f_fillRenderShaderModule, [], "2d", "s");
+export const modifierFrame2RenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr_u, v_u_f_u], v_modifierFrame2RenderShaderModule, f_fillRenderShaderModule, [], "2d", "t");
 export const bezierRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_sr, v_u_f_u], v_bezierRenderShaderModule, f_fillRenderShaderModule, [], "2d", "s");
 export const textureRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_u, v_u_f_t, f_u], v_PSRSquareRenderShaderModule, f_textureRenderShaderModule, [], "2d", "s");
 export const rotateModifierRenderPipeline = GPU.createRenderPipeline([v_u_u_f_ts, v_u, v_u_f_u], await fetch('script/wgsl/レンダー/回転モディファイア/v_表示.wgsl').then(x => x.text()), f_fillRenderShaderModule, [], "2d", "s");

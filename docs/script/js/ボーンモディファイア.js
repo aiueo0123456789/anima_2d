@@ -2,9 +2,12 @@ import { device,GPU } from "./webGPU.js";
 import { Children } from "./子要素.js";
 import { AnimationBlock, BoneAnimation, VerticesAnimation } from "./アニメーション.js";
 import { v_sr,c_sr_sr,c_sr,c_srw,c_srw_sr, c_sr_u, calculateBaseBoneDataPipeline, c_srw_srw_sr_sr, c_srw_sr_sr } from "./GPUObject.js";
+import { createID } from "./グリッド/制御.js";
+import { sharedDestroy } from "./オブジェクトで共通の処理.js";
 
 export class BoneModifier {
     constructor(name) {
+        this.id = createID();
         this.name = name;
         this.isInit = false;
         this.isChange = false;
@@ -50,10 +53,7 @@ export class BoneModifier {
 
     // gc対象にしてメモリ解放
     destroy() {
-        this.animationBlock.forEach(animtion => {
-            animtion.destroy();
-        });
-        this.animationBlock.length = 0;
+        sharedDestroy(this);
     }
 
     getBoneDepthFromIndex(index) {

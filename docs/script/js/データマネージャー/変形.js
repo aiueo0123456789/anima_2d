@@ -340,7 +340,6 @@ export class Transform {
     }
 
     transform(pipeline, value, proportionalEditType, proportionalSize) {
-        console.log(value)
         GPU.writeBuffer(this.valueBuffer, new Float32Array(value));
         if (this.target.type == "ボーンアニメーション") {
             GPU.runComputeShader(pipeline, [this.transformGroup], this.workNumX);
@@ -383,7 +382,6 @@ export class Transform {
         } else {
         }
         if (this.target.type == "ボーンアニメーション") {
-            console.log("あ",value)
             this.transform(boneAnimationResizePipeline, value, proportionalEditType, proportionalSize);
         } else {
             this.transform(resizePipeline, value, proportionalEditType, proportionalSize);

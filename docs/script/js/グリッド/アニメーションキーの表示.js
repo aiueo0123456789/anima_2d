@@ -1,7 +1,7 @@
 import { stateMachine } from '../main.js';
 import { hierarchy } from '../ヒエラルキー.js';
 import { select } from './ヒエラルキーの表示.js';
-import { createobjectDataAndRelateTag, deleteTagDisappearedObject, resetTag, updateDataForUI } from "./制御.js";
+import { createobjectDataAndRelateTag, deleteTagDisappearedObject, managerForDOMs, resetTag, updateDataForUI } from "./制御.js";
 
 export function displayAnimationKey(targetTag, isInit, tags, config) {
     console.log("displayAnimationKey")
@@ -71,12 +71,17 @@ export function displayAnimationKey(targetTag, isInit, tags, config) {
                     }
                     hierarchy.animationManagers.forEach(manager => {
                         const sleectElement = document.createElement('option'); // h1要素に配列の要素を設定
-                        sleectElement.value = `${manager.name}`; // h1要素に配列の要素を設定
+                        sleectElement.value = `${manager.id}`; // h1要素に配列の要素を設定
                         sleectElement.textContent = `${manager.name}`; // h1要素に配列の要素を設定
                         if (animation.belongAnimationManager == manager) {
                             sleectElement.selected = true;
                         }
                         managerSelectTag.append(sleectElement);
+                    })
+
+                    managerSelectTag.addEventListener("change", () => {
+                        hierarchy.
+                        managerForDOMs.update(animation);
                     })
     
                     // スライダーのイベントリスナーを追加

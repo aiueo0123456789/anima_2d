@@ -22,9 +22,16 @@ function IsString(value) {
     return typeof value === "string" || value instanceof String;
 }
 
+function createStateStruct(dataStruct, updateFn, sutateUpdate) {
+
+    return ;
+}
+
 let previousKeysDown = {};
 export class StateMachine {
     constructor() {
+        this.useTool = "選択";
+
         this.weightPaint = new WeightPaint();
         this.mesh = new Mesh();
         this.transform = new Transform();
@@ -46,105 +53,109 @@ export class StateMachine {
         this.undoList = [];
         this.undoDepth = 0;
 
-        this.externalInputs = {"ヒエラルキーのオブジェクト選択": false, "オブジェクトのアニメーションキー選択": false};
+        this.externalInputs = {"ヒエラルキーのオブジェクト選択": false, "オブジェクトのアニメーションキー選択": false, "ツールバー選択": false};
         this.structs = { // データの構造: {ステートが変わったタイミングでセットされるデータの構造や定数(&をつけることで前ステートからデータを受け渡しできる)}, 更新関数: ステートの持つデータを更新する関数, ステートの更新: [{条件: ステートの切り替え条件([]配列指定でandを実現), 次のステート: 条件が揃った時に変わるステート, データの初期化: データに参照がある場合するか}...]
-            "オブジェクト選択": {データの構造: {object: null, IsHideForGUI: false, hoverObjects: {isInclude: "&hoverObjects", not: []}}, 更新関数: this.updateSelectObjects.bind(this), ステートの更新: [
+            "選択": {
+                データの構造: {
+                    object: "&-",
+                    animation: {isInclude: "&-", not: null},
+                    selectVerticesIndexs: {isInclude: "&-", not: []},
+                    selectVerticesIndexBuffer: {isInclude: "&-", not: null},
+                    selectVerticesBBoxGroup: {isInclude: "&-", not: null},
+                    selectVerticesIndexsGroup: {isInclude: "&-", not: null},
+                    selectVerticesBBoxRenderGroup: GPU.createGroup(v_sr, [{item: this.selectVerticesBBoxBuffer, type: 'b'}]),
+                    referenceCoordinatesRenderGroup: GPU.createGroup(v_sr, [{item: this.referenceCoordinatesBuffer, type: 'b'}]),
+                },
+                更新関数: [this.setSelectVertices.bind(this),this.updateActiveAnimation.bind(this)],
+                ステートの更新: [
+                    {条件: [["/Tab"]], 次のステート: "$-1", データの初期化: false},
+                    {条件: [["/g", this.transformForBool.bind(this)]], 次のステート: "$-1/並行移動"},
+                    {条件: [["/s", this.transformForBool.bind(this)]], 次のステート: "$-1/リサイズ"},
+                    {条件: [["/r", this.transformForBool.bind(this)]], 次のステート: "$-1/回転"},
+                    {条件: [["/w"]], 次のステート: "$-1/ウェイトペイント"},
+                ]
+            },
+            "追加": {
+                データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"},
+                更新関数: null,
+                ステートの更新: [
+                    {条件: [["すぐに"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.addVertices.bind(this)},
+                ]
+            },
+            "削除": {
+                データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"},
+                更新関数: null,
+                ステートの更新: [
+                    {条件: [["すぐに"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.addVertices.bind(this)},
+                ]
+            },
+            "並行移動": {
+                初期化関数: this.createTransformDataInit.bind(this),
+                データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: this.createTrnaslateTransformData.bind(this),
+                ステートの更新: [
+                    {条件: [["/g"],["クリック"]], 次のステート: "$-1/選択", 終了関数: this.createTransformUndoData.bind(this)},
+                    {条件: [["右クリック"],["/c"]], 次のステート: "$-1/選択", 終了関数: this.cancelTransform.bind(this)},
+                ]
+            },
+            "リサイズ": {
+                初期化関数: this.createTransformDataInit.bind(this),
+                データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: this.createResizeTransformData.bind(this),
+                ステートの更新: [
+                    {条件: [["/g"],["クリック"]], 次のステート: "$-1/選択", 終了関数: this.createTransformUndoData.bind(this)},
+                    {条件: [["右クリック"],["/c"]], 次のステート: "$-1/選択", 終了関数: this.cancelTransform.bind(this)},
+                ]
+            },
+            "回転": {
+                初期化関数: this.createTransformDataInit.bind(this),
+                データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: this.createRotateTransformData.bind(this),
+                ステートの更新: [
+                    {条件: [["/g"],["クリック"]], 次のステート: "$-1/選択", 終了関数: this.createTransformUndoData.bind(this)},
+                    {条件: [["右クリック"],["/c"]], 次のステート: "$-1/選択", 終了関数: this.cancelTransform.bind(this)},
+                ]
+            },
+            "ウェイトペイント": {初期化関数: this.updateWeightPaintAwaitInit.bind(this), データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-", weightPaintTarget: {isInclude: "&-", not: 0}}, 更新関数: this.updateWeightPaintAwait.bind(this), ステートの更新: [
+                {条件: [["/Tab"]], 次のステート: "$-1/選択", 終了関数: null},
+                {条件: [["/w"]], 次のステート: "$-1/選択", 終了関数: null},
+                {条件: [["!Alt","クリック"]], 次のステート: "ペイント", 終了関数: null},
+            ]},
+            "ペイント": {初期化関数: this.updateWeightPaintInit.bind(this), データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-", weightPaintTarget: "&-", weightTargetBuffer: "&-", weightTargetGroup: "&-"}, 更新関数: this.updateWeightPaint.bind(this), ステートの更新: [
+                {条件: [["!ホールド"]], 次のステート: "$-1", 終了関数: this.weightPaintUndo.bind(this)},
+            ]},
+
+            "オブジェクト選択": {データの構造: {object: null, IsHideForGUI: false, hoverObjects: {isInclude: "&-", not: []}}, 更新関数: this.updateSelectObjects.bind(this), ステートの更新: [
                 [
-                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.boneModifiers)], [this.hierarchySelect.bind(this,"ボーンモディファイア")]], 次のステート: "オブジェクト選択-ボーンモディファイア"},
-                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.graphicMeshs)], [this.hierarchySelect.bind(this,"グラフィックメッシュ")]], 次のステート: "オブジェクト選択-グラフィックメッシュ"},
-                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.modifiers)], [this.hierarchySelect.bind(this,"モディファイア")]], 次のステート: "オブジェクト選択-モディファイア"},
-                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.lineModifiers)], [this.hierarchySelect.bind(this,"ベジェモディファイア")]], 次のステート: "オブジェクト選択-ベジェモディファイア"},
-                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.rotateModifiers)], [this.hierarchySelect.bind(this,"回転モディファイア")]], 次のステート: "オブジェクト選択-回転モディファイア"},
+                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.graphicMeshs)], [this.hierarchySelect.bind(this,"グラフィックメッシュ")]], 次のステート: "グラフィックメッシュ"},
+                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.modifiers)], [this.hierarchySelect.bind(this,"モディファイア")]], 次のステート: "モディファイア"},
+                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.boneModifiers)], [this.hierarchySelect.bind(this,"ボーンモディファイア")]], 次のステート: "ボーンモディファイア"},
+                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.lineModifiers)], [this.hierarchySelect.bind(this,"ベジェモディファイア")]], 次のステート: "ベジェモディファイア"},
+                    {条件: [["クリック",this.SelectObjectsBBox.bind(this, hierarchy.rotateModifiers)], [this.hierarchySelect.bind(this,"回転モディファイア")]], 次のステート: "回転モディファイア"},
                 ],
             ]},
 
             // グラフィックメッシュの編集
-            "オブジェクト選択-グラフィックメッシュ": {初期化関数: () => {updateDataForUI["ヒエラルキー"] = true; updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;},データの構造: {object: "&object", IsHideForGUI: "&IsHideForGUI", animation: {isInclude: "&animation", not: null}, hoverObjects: {isInclude: "&hoverObjects", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "オブジェクト選択", ステート変更後ループさせるか: true},
-                {条件: [["/Tab"]], 次のステート: "グラフィックメッシュ編集-選択"},
-            ]},
-            "グラフィックメッシュ編集-選択": {データの構造: {
-                object: "&object",
-                animation: {isInclude: "&animation", not: null},
-                selectVerticesIndexs: {isInclude: "&selectVerticesIndexs", not: []},
-                selectVerticesIndexBuffer: {isInclude: "&selectVerticesIndexBuffer", not: null},
-                selectVerticesBBoxGroup: {isInclude: "&selectVerticesBBoxGroup", not: null},
-                selectVerticesIndexsGroup: {isInclude: "&selectVerticesIndexsGroup", not: null},
-                selectVerticesBBoxRenderGroup: GPU.createGroup(v_sr, [{item: this.selectVerticesBBoxBuffer, type: 'b'}]),
-                referenceCoordinatesRenderGroup: GPU.createGroup(v_sr, [{item: this.referenceCoordinatesBuffer, type: 'b'}]),
-            }, 更新関数: [this.setSelectVertices.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["/Tab"]], 次のステート: "オブジェクト選択-グラフィックメッシュ", データの初期化: false},
-                {条件: [["/g", this.transformForBool.bind(this)]], 次のステート: "グラフィックメッシュ編集-並行移動"},
-                {条件: [["/s", this.transformForBool.bind(this)]], 次のステート: "グラフィックメッシュ編集-拡大縮小"},
-                {条件: [["/r", this.transformForBool.bind(this)]], 次のステート: "グラフィックメッシュ編集-回転"},
-                {条件: [["/w"]], 次のステート: "グラフィックメッシュ編集-ウェイトペイント"},
-            ]},
-            "グラフィックメッシュ編集-並行移動": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createTrnaslateTransformData.bind(this), ステートの更新: [
-                {条件: [["/g"],["クリック"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "グラフィックメッシュ編集-拡大縮小": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createResizeTransformData.bind(this), ステートの更新: [
-                {条件: [["/s"],["クリック"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "グラフィックメッシュ編集-回転": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createRotateTransformData.bind(this), ステートの更新: [
-                {条件: [["/r"],["クリック"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "グラフィックメッシュ編集-ウェイトペイント": {初期化関数: this.updateWeightPaintAwaitInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup", weightPaintTarget: {isInclude: "&weightPaintTarget", not: 0}}, 更新関数: this.updateWeightPaintAwait.bind(this), ステートの更新: [
-                {条件: [["/Tab"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: null},
-                {条件: [["/w"]], 次のステート: "グラフィックメッシュ編集-選択", 終了関数: null},
-                {条件: [["-Alt","クリック"]], 次のステート: "グラフィックメッシュ編集-ウェイトペイント-ペイント", 終了関数: null},
-            ]},
-            "グラフィックメッシュ編集-ウェイトペイント-ペイント": {初期化関数: this.updateWeightPaintInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup", weightPaintTarget: "&weightPaintTarget", weightTargetBuffer: "&weightTargetBuffer", weightTargetGroup: "&weightTargetGroup"}, 更新関数: this.updateWeightPaint.bind(this), ステートの更新: [
-                {条件: [["-ホールド"]], 次のステート: "グラフィックメッシュ編集-ウェイトペイント", 終了関数: this.weightPaintUndo.bind(this)},
+            "グラフィックメッシュ": {初期化関数: () => {managerForDOMs.update("ヒエラルキー"); updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;},データの構造: {object: "&-", IsHideForGUI: "&-", animation: {isInclude: "&-", not: null}, hoverObjects: {isInclude: "&-", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
+                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "$-1", ステート変更後ループさせるか: true},
+                {条件: [["/Tab"]], 次のステート: "選択"},
             ]},
 
             // モディファイアの編集
-            "オブジェクト選択-モディファイア": {初期化関数: () => {updateDataForUI["ヒエラルキー"] = true; updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&object", IsHideForGUI: "&IsHideForGUI", animation: {isInclude: "&animation", not: null}, hoverObjects: {isInclude: "&hoverObjects", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "オブジェクト選択", ステート変更後ループさせるか: true},
-                {条件: [["/Tab"]], 次のステート: "モディファイア編集-選択"},
-            ]},
-            "モディファイア編集-選択": {データの構造: {
-                object: "&object",
-                animation: {isInclude: "&animation", not: null},
-                selectVerticesIndexs: {isInclude: "&selectVerticesIndexs", not: []},
-                selectVerticesIndexBuffer: {isInclude: "&selectVerticesIndexBuffer", not: null},
-                selectVerticesBBoxGroup: {isInclude: "&selectVerticesBBoxGroup", not: null},
-                selectVerticesIndexsGroup: {isInclude: "&selectVerticesIndexsGroup", not: null},
-                selectVerticesBBoxRenderGroup: GPU.createGroup(v_sr, [{item: this.selectVerticesBBoxBuffer, type: 'b'}]),
-                referenceCoordinatesRenderGroup: GPU.createGroup(v_sr, [{item: this.referenceCoordinatesBuffer, type: 'b'}]),
-            }, 更新関数: [this.setSelectVertices.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["/Tab"]], 次のステート: "オブジェクト選択-モディファイア", データの初期化: false},
-                {条件: [["/g", this.transformForBool.bind(this)]], 次のステート: "モディファイア編集-並行移動"},
-                {条件: [["/s", this.transformForBool.bind(this)]], 次のステート: "モディファイア編集-拡大縮小"},
-                {条件: [["/r", this.transformForBool.bind(this)]], 次のステート: "モディファイア編集-回転"},
-            ]},
-            "モディファイア編集-並行移動": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createTrnaslateTransformData.bind(this), ステートの更新: [
-                {条件: [["/g"],["クリック"]], 次のステート: "モディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "モディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "モディファイア編集-拡大縮小": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createResizeTransformData.bind(this), ステートの更新: [
-                {条件: [["/s"],["クリック"]], 次のステート: "モディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "モディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "モディファイア編集-回転": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createRotateTransformData.bind(this), ステートの更新: [
-                {条件: [["/r"],["クリック"]], 次のステート: "モディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "モディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
+            "モディファイア": {初期化関数: () => {managerForDOMs.update("ヒエラルキー"); updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&-", IsHideForGUI: "&-", animation: {isInclude: "&-", not: null}, hoverObjects: {isInclude: "&-", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
+                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "$-1", ステート変更後ループさせるか: true},
+                {条件: [["/Tab"]], 次のステート: "選択"},
             ]},
 
             //　ベジェモディファイアの編集
-            "オブジェクト選択-ベジェモディファイア": {初期化関数: () => {updateDataForUI["ヒエラルキー"] = true; updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&object", IsHideForGUI: "&IsHideForGUI", animation: {isInclude: "&animation", not: null}, hoverObjects: {isInclude: "&hoverObjects", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "オブジェクト選択", ステート変更後ループさせるか: true},
-                {条件: [["/Tab"]], 次のステート: "ベジェモディファイア編集-選択"},
+            "ベジェモディファイア": {初期化関数: () => {managerForDOMs.update("ヒエラルキー"); updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&-", IsHideForGUI: "&-", animation: {isInclude: "&-", not: null}, hoverObjects: {isInclude: "&-", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
+                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "$-1", ステート変更後ループさせるか: true},
+                {条件: [["/Tab"]], 次のステート: "選択"},
             ]},
             "ベジェモディファイア編集-選択": {データの構造: {
-                object: "&object",
-                animation: {isInclude: "&animation", not: null},
-                selectVerticesIndexs: {isInclude: "&selectVerticesIndexs", not: []},
-                selectVerticesIndexBuffer: {isInclude: "&selectVerticesIndexBuffer", not: null},
-                selectVerticesBBoxGroup: {isInclude: "&selectVerticesBBoxGroup", not: null},
-                selectVerticesIndexsGroup: {isInclude: "&selectVerticesIndexsGroup", not: null},
+                object: "&-",
+                animation: {isInclude: "&-", not: null},
+                selectVerticesIndexs: {isInclude: "&-", not: []},
+                selectVerticesIndexBuffer: {isInclude: "&-", not: null},
+                selectVerticesBBoxGroup: {isInclude: "&-", not: null},
+                selectVerticesIndexsGroup: {isInclude: "&-", not: null},
                 selectVerticesBBoxRenderGroup: GPU.createGroup(v_sr, [{item: this.selectVerticesBBoxBuffer, type: 'b'}]),
                 referenceCoordinatesRenderGroup: GPU.createGroup(v_sr, [{item: this.referenceCoordinatesBuffer, type: 'b'}]),
             }, 更新関数: [this.setSelectVertices.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
@@ -155,61 +166,49 @@ export class StateMachine {
                 {条件: [["/s", this.transformForBool.bind(this)]], 次のステート: "ベジェモディファイア編集-拡大縮小"},
                 {条件: [["/r", this.transformForBool.bind(this)]], 次のステート: "ベジェモディファイア編集-回転"},
             ]},
-            "ベジェモディファイア編集-頂点追加": {データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: null, ステートの更新: [
+            "ベジェモディファイア編集-頂点追加": {データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: null, ステートの更新: [
                 {条件: [["すぐに"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.addVertices.bind(this)},
             ]},
-            "ベジェモディファイア編集-頂点削除": {データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: null, ステートの更新: [
+            "ベジェモディファイア編集-頂点削除": {データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: null, ステートの更新: [
                 {条件: [["すぐに"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.deleteVertices.bind(this)},
-            ]},
-            "ベジェモディファイア編集-並行移動": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createTrnaslateTransformData.bind(this), ステートの更新: [
-                {条件: [["/g"],["クリック"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "ベジェモディファイア編集-拡大縮小": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createResizeTransformData.bind(this), ステートの更新: [
-                {条件: [["/s"],["クリック"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "ベジェモディファイア編集-回転": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createRotateTransformData.bind(this), ステートの更新: [
-                {条件: [["/r"],["クリック"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "ベジェモディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
             ]},
 
             //　回転モディファイアの編集
-            "オブジェクト選択-回転モディファイア": {初期化関数: () => {updateDataForUI["ヒエラルキー"] = true; updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&object", IsHideForGUI: "&IsHideForGUI", hoverObjects: {isInclude: "&hoverObjects", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "オブジェクト選択", ステート変更後ループさせるか: true},
+            "回転モディファイア": {初期化関数: () => {managerForDOMs.update("ヒエラルキー"); updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&-", IsHideForGUI: "&-", hoverObjects: {isInclude: "&-", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
+                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "$-1", ステート変更後ループさせるか: true},
                 {条件: [["/Tab"]], 次のステート: "回転モディファイア編集-待機"},
             ]},
             "回転モディファイア編集-待機": {データの構造: {
-                object: "&object",
-                animation: {isInclude: "&animation", not: null},
+                object: "&-",
+                animation: {isInclude: "&-", not: null},
             }, 更新関数: this.rotateTransformStateForWait.bind(this), ステートの更新: [
                 {条件: [["/Tab"]], 次のステート: "オブジェクト選択-回転モディファイア", データの初期化: false},
                 {条件: [["/g"]], 次のステート: "回転モディファイア編集-並行移動"},
                 {条件: [["/s"]], 次のステート: "回転モディファイア編集-拡大縮小"},
                 {条件: [["/r"]], 次のステート: "回転モディファイア編集-回転"},
             ]},
-            "回転モディファイア編集-並行移動": {初期化関数: this.createRotateModifierTransformDataInit.bind(this), データの構造: {transformType: "move", object: "&object", animation: "&animation"}, 更新関数: this.createRotateModifierTransformData.bind(this), ステートの更新: [
+            "回転モディファイア編集-並行移動": {初期化関数: this.createRotateModifierTransformDataInit.bind(this), データの構造: {transformType: "move", object: "&-", animation: "&-"}, 更新関数: this.createRotateModifierTransformData.bind(this), ステートの更新: [
                 {条件: [["/g"],["クリック"]], 次のステート: "回転モディファイア編集-待機", 終了関数: this.createRotateModifierTransformData.bind(this)},
             ]},
-            "回転モディファイア編集-拡大縮小": {初期化関数: this.createRotateModifierTransformDataInit.bind(this), データの構造: {transformType: "scaling", object: "&object", animation: "&animation"}, 更新関数: this.createRotateModifierTransformData.bind(this), ステートの更新: [
+            "回転モディファイア編集-拡大縮小": {初期化関数: this.createRotateModifierTransformDataInit.bind(this), データの構造: {transformType: "scaling", object: "&-", animation: "&-"}, 更新関数: this.createRotateModifierTransformData.bind(this), ステートの更新: [
                 {条件: [["/s"],["クリック"]], 次のステート: "回転モディファイア編集-待機", 終了関数: this.createRotateModifierTransformData.bind(this)},
             ]},
-            "回転モディファイア編集-回転": {初期化関数: this.createRotateModifierTransformDataInit.bind(this), データの構造: {transformType: "rotate", object: "&object", animation: "&animation"}, 更新関数: this.createRotateModifierTransformData.bind(this), ステートの更新: [
+            "回転モディファイア編集-回転": {初期化関数: this.createRotateModifierTransformDataInit.bind(this), データの構造: {transformType: "rotate", object: "&-", animation: "&-"}, 更新関数: this.createRotateModifierTransformData.bind(this), ステートの更新: [
                 {条件: [["/r"],["クリック"]], 次のステート: "回転モディファイア編集-待機", 終了関数: this.createRotateModifierTransformData.bind(this)},
             ]},
 
             //　ボーンモディファイアの編集
-            "オブジェクト選択-ボーンモディファイア": {初期化関数: () => {updateDataForUI["ヒエラルキー"] = true; updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&object", IsHideForGUI: "&IsHideForGUI", animation: {isInclude: "&animation", not: null}, hoverObjects: {isInclude: "&hoverObjects", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
-                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "オブジェクト選択", ステート変更後ループさせるか: true},
-                {条件: [["/Tab"]], 次のステート: "ボーンモディファイア編集-選択"},
+            "ボーンモディファイア": {初期化関数: () => {managerForDOMs.update("ヒエラルキー"); updateDataForUI["インスペクタ"] = true; updateDataForUI["アニメーション"] = true;}, データの構造: {object: "&-", IsHideForGUI: "&-", animation: {isInclude: "&-", not: null}, hoverObjects: {isInclude: "&-", not: []}}, 更新関数: [this.updateSelectObjects.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
+                {条件: [["クリック"],["input-ヒエラルキーのオブジェクト選択"]], 次のステート: "$-1", ステート変更後ループさせるか: true},
+                {条件: [["/Tab"]], 次のステート: "選択"},
             ]},
             "ボーンモディファイア編集-選択": {データの構造: {
-                object: "&object",
-                animation: {isInclude: "&animation", not: null},
-                selectVerticesIndexs: {isInclude: "&selectVerticesIndexs", not: []},
-                selectVerticesIndexBuffer: {isInclude: "&selectVerticesIndexBuffer", not: null},
-                selectVerticesBBoxGroup: {isInclude: "&selectVerticesBBoxGroup", not: null},
-                selectVerticesIndexsGroup: {isInclude: "&selectVerticesIndexsGroup", not: null},
+                object: "&-",
+                animation: {isInclude: "&-", not: null},
+                selectVerticesIndexs: {isInclude: "&-", not: []},
+                selectVerticesIndexBuffer: {isInclude: "&-", not: null},
+                selectVerticesBBoxGroup: {isInclude: "&-", not: null},
+                selectVerticesIndexsGroup: {isInclude: "&-", not: null},
                 selectVerticesBBoxRenderGroup: GPU.createGroup(v_sr, [{item: this.selectVerticesBBoxBuffer, type: 'b'}]),
                 referenceCoordinatesRenderGroup: GPU.createGroup(v_sr, [{item: this.referenceCoordinatesBuffer, type: 'b'}]),
             }, 更新関数: [this.setSelectVertices.bind(this),this.updateActiveAnimation.bind(this)], ステートの更新: [
@@ -220,23 +219,11 @@ export class StateMachine {
                 {条件: [["/s", this.transformForBool.bind(this)]], 次のステート: "ボーンモディファイア編集-拡大縮小"},
                 {条件: [["/r", this.transformForBool.bind(this)]], 次のステート: "ボーンモディファイア編集-回転"},
             ]},
-            "ボーンモディファイア編集-頂点追加": {データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: null, ステートの更新: [
+            "ボーンモディファイア編集-頂点追加": {データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: null, ステートの更新: [
                 {条件: [["すぐに"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.addVertices.bind(this)},
             ]},
-            "ボーンモディファイア編集-頂点削除": {データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: null, ステートの更新: [
+            "ボーンモディファイア編集-頂点削除": {データの構造: {object: "&-", animation: "&-", selectVerticesIndexs: "&-", selectVerticesIndexBuffer: "&-", selectVerticesIndexsGroup: "&-", selectVerticesBBoxRenderGroup: "&-", referenceCoordinatesRenderGroup: "&-", selectVerticesBBoxGroup: "&-"}, 更新関数: null, ステートの更新: [
                 {条件: [["すぐに"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.deleteVertices.bind(this)},
-            ]},
-            "ボーンモディファイア編集-並行移動": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createTrnaslateTransformData.bind(this), ステートの更新: [
-                {条件: [["/g"],["クリック"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "ボーンモディファイア編集-拡大縮小": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createResizeTransformData.bind(this), ステートの更新: [
-                {条件: [["/s"],["クリック"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
-            ]},
-            "ボーンモディファイア編集-回転": {初期化関数: this.createTransformDataInit.bind(this), データの構造: {object: "&object", animation: "&animation", selectVerticesIndexs: "&selectVerticesIndexs", selectVerticesIndexBuffer: "&selectVerticesIndexBuffer", selectVerticesIndexsGroup: "&selectVerticesIndexsGroup", selectVerticesBBoxRenderGroup: "&selectVerticesBBoxRenderGroup", referenceCoordinatesRenderGroup: "&referenceCoordinatesRenderGroup", selectVerticesBBoxGroup: "&selectVerticesBBoxGroup"}, 更新関数: this.createRotateTransformData.bind(this), ステートの更新: [
-                {条件: [["/r"],["クリック"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.createTransformUndoData.bind(this)},
-                {条件: [["右クリック"],["/c"]], 次のステート: "ボーンモディファイア編集-選択", 終了関数: this.cancelTransform.bind(this)},
             ]},
 
             "all": {更新関数: this.allUpdate.bind(this)},
@@ -250,12 +237,15 @@ export class StateMachine {
                 newData[dataName] = initData;
             }
         }
-        this.state = {id: "オブジェクト選択", data: newData};
+        this.state = {idForArray: ["オブジェクト選択"], data: newData};
     }
 
     allUpdate() {
         if (keysDown["1"]) this.state.data.IsHideForGUI = false;
         if (keysDown["2"]) this.state.data.IsHideForGUI = true;
+        if (this.externalInputs["ツールバー選択"]) {
+
+        }
     }
 
     async updateSelectObjects() {
@@ -280,9 +270,9 @@ export class StateMachine {
         // if (this.state.data.object.parent.type == "ボーンディファイア" || this.state.data.object.parent.type == "ディファイア") {
         if (keysDown["Alt"]) {
             if (activeView.mouseState.click) {
-                const reslut = await activeView.select.selectBone(this.state.data.object.parent, activeView.mouseState.positionForGPU);
-                console.log(reslut);
-                this.state.data.weightPaintTarget = reslut;
+                const result = await activeView.select.selectBone(this.state.data.object.parent, activeView.mouseState.positionForGPU);
+                console.log(result);
+                this.state.data.weightPaintTarget = result;
 
                 GPU.writeBuffer(this.state.data.weightTargetBuffer, new Uint32Array([this.state.data.weightPaintTarget]));
             }
@@ -316,39 +306,24 @@ export class StateMachine {
     }
 
     async SelectObjectsBBox(objects) {
-        if (objects[0] instanceof GraphicMesh) {
-            if (this.state.data.hoverObjects.length > 0) {
-                let frontObject = this.state.data.hoverObjects[0];
-                for (const object of objects) {
-                    if (this.state.data.hoverObjects.includes(object)) {
-                        if (frontObject.zIndex <= object.zIndex) {
-                            frontObject = object;
-                        }
-                    }
-                }
-                this.state.data.object = frontObject;
-                return true;
-            }
-        } else if (objects[0] instanceof BoneModifier) {
-            if (this.state.data.hoverObjects.length > 0) {
-                let frontObject = this.state.data.hoverObjects[0];
-                for (const object of objects) {
-                    if (this.state.data.hoverObjects.includes(object)) {
-                        frontObject = object;
-                    }
-                }
-                this.state.data.object = frontObject;
-                return true;
-            }
-        } else {
-            for (const object of objects) {
-                if (await activeView.select.BBoxSelect(object, activeView.mouseState.positionForGPU,toolbar.selectCircleRadius + 5)) {
-                    this.state.data.object = object;
-                    return true;
+        let frontObject = null;
+        if (this.state.data.hoverObjects.length) {
+            frontObject = this.state.data.hoverObjects[0];
+            for (let i = 1; i < this.state.data.hoverObjects.length; i ++) {
+                const object = this.state.data.hoverObjects[i];
+                if (!(zIndex in object) || object.zIndex <= frontObject) {
+                    frontObject = object;
                 }
             }
         }
-        this.state.data.object = null;
+
+        for (const object of objects) {
+            if (await activeView.select.BBoxSelect(object, activeView.mouseState.positionForGPU,toolbar.selectCircleRadius + 5)) {
+                frontObject = object;
+            }
+        }
+
+        this.state.data.object = frontObject;
         return false;
     }
 
@@ -552,7 +527,7 @@ export class StateMachine {
 
     // 現在のステートに文字列が含まれるか
     searchStringInNowState(string) {
-        return this.state.id.split("-").includes(string);
+        return this.state.idForArray.includes(string);
     }
 
     // ステート更新
@@ -565,7 +540,8 @@ export class StateMachine {
             await this.structs["all"].更新関数();
         }
         while (roop) {
-            const nowStateStruct = this.structs[this.state.id];
+            const nowStateStruct = this.structs[this.state.idForArray[this.state.idForArray.length - 1]];
+            // console.log(nowStateStruct, this.state.idForArray)
             if (nowStateStruct.更新関数) {
                 if (Array.isArray(nowStateStruct.更新関数)) {
                     for (const fn of nowStateStruct.更新関数) {
@@ -577,6 +553,20 @@ export class StateMachine {
             }
             let orBool = false; // orを満たすか
             const ステートの管理 = async (data) => {
+                let nextStateStruct;
+                let undoNum = 0;
+                let nextStateSplit = data.次のステート.split("/");
+                let nextState = [...this.state.idForArray];
+                if (data.次のステート[0] == "$") {
+                    undoNum = Number(nextStateSplit[0].slice(1));
+                    nextState = nextState.slice(0, undoNum);
+                    if (1 < nextStateSplit.length) {
+                        nextState = nextState.concat([nextStateSplit[nextStateSplit.length - 1]]);
+                    }
+                } else {
+                    nextState = nextState.concat([nextStateSplit[nextStateSplit.length - 1]]);
+                }
+                nextStateStruct = this.structs[nextState[nextState.length - 1]];
                 for (const ands of data.条件) {
                     let andBool = true; // andを満たすか
                     for (const 条件 of ands) {
@@ -606,12 +596,12 @@ export class StateMachine {
                                 andBool = false;
                                 break ;
                             }
-                        }  else if (条件 == "-ホールド") {
+                        }  else if (条件 == "!ホールド") {
                             if (activeView.mouseState.hold) {
                                 andBool = false;
                                 break ;
                             }
-                        } else if (条件[0] == "-") {
+                        } else if (条件[0] == "!") {
                             if ((keysDown[条件.slice(1)])) {
                                 andBool = false;
                                 break ;
@@ -639,29 +629,36 @@ export class StateMachine {
                     if (data.終了関数 && typeof data.終了関数 == "function") {
                         data.終了関数();
                     }
+                    console.log("データ",this.state.data)
                     let newData = {};
-                    if (this.structs[data.次のステート]) {
-                        for (const dataName in this.structs[data.次のステート].データの構造) {
-                            const initData = this.structs[data.次のステート].データの構造[dataName];
-                            if (isPlainObject(initData) && ("isInclude" in initData) && ("not" in initData)) {
-                                if (initData.isInclude.slice(1) in this.state.data) {
-                                    newData[dataName] = this.state.data[initData.isInclude.slice(1)];
+                    if (nextStateStruct) {
+                        for (const dataName in nextStateStruct.データの構造) {
+                            const initData = nextStateStruct.データの構造[dataName];
+                            if (isPlainObject(initData) && ("isInclude" in initData) && ("not" in initData)) { // {isInclude: , not: }の場合
+                                const referenceName = initData.isInclude == "&-" ? dataName : initData.isInclude.slice(1);
+                                if (referenceName in this.state.data) {
+                                    newData[dataName] = this.state.data[referenceName];
                                 } else {
                                     newData[dataName] = initData.not;
                                 }
                             } else if (IsString(initData) && initData[0] == "&") {
-                                newData[dataName] = this.state.data[initData.slice(1)];
+                                if (initData == "&-") {
+                                    newData[dataName] = this.state.data[dataName];
+                                } else {
+                                    newData[dataName] = this.state.data[initData.slice(1)];
+                                }
                             } else {
                                 newData[dataName] = initData;
                             }
                         }
                     } else {
-                        console.warn("ステートが定義されていません",data.次のステート)
+                        console.warn("ステートが定義されていません",nextState,data,nextStateStruct)
                     }
-                    this.state = {id: data.次のステート, data: newData};
-                    if (this.structs[data.次のステート].初期化関数 && typeof this.structs[data.次のステート].初期化関数 === 'function') this.structs[data.次のステート].初期化関数();
+                    console.log("次のデータ",newData)
+                    this.state = {idForArray: nextState, data: newData};
+                    if (nextStateStruct.初期化関数 && typeof nextStateStruct.初期化関数 === 'function') nextStateStruct.初期化関数();
                     if (!data.ステート変更後ループさせるか) roop = false;
-                    console.log(this.state)
+                    console.log("次のステート",this.state)
                     return true;
                 }
                 return false;

@@ -19,9 +19,14 @@ function addAnimation() {
     appendAnimationToObject(stateMachine.state.data.object,"名称未設定");
 }
 
-export function activeOrClear(t, bool) {
-    t.classList.remove(bool ? "clearColor" : "activeColor");
-    t.classList.add(bool ? "activeColor" : "clearColor");
+export function activeOrClear(t, bool, option = false) {
+    if (option) {
+        t.classList.remove(bool ? "clearColor" : "activeColor2");
+        t.classList.add(bool ? "activeColor2" : "clearColor");
+    } else {
+        t.classList.remove(bool ? "clearColor" : "activeColor");
+        t.classList.add(bool ? "activeColor" : "clearColor");
+    }
 }
 
 class Contextmenu {
@@ -52,8 +57,6 @@ class Contextmenu {
         for (const data of struct) {
             createMenu(this.tag, data);
         }
-
-        console.log(this.tag)
     }
 }
 
@@ -115,8 +118,8 @@ const data = {
 
 export function updateForContextmenu(type,position) {
     if (data[type]) {
-        contextmenuContainer.innerHTML = "";
-        contextmenuContainer.append(data[type].tag)
+        contextmenuContainer.replaceChildren();
+        contextmenuContainer.append(data[type].tag);
         contextmenuContainer.classList.remove('hidden');
         contextmenuContainer.style.left = `${position[0]}px`;
         contextmenuContainer.style.top = `${position[1]}px`;

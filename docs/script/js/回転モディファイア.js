@@ -2,9 +2,12 @@ import { device,GPU } from "./webGPU.js";
 import { v_u, c_u_u } from "./GPUObject.js";
 import { Children } from "./子要素.js";
 import { AnimationBlock, RotateAnimation } from "./アニメーション.js";
+import { createID } from "./グリッド/制御.js";
+import { sharedDestroy } from "./オブジェクトで共通の処理.js";
 
 export class RotateModifier {
     constructor(name) {
+        this.id = createID();
         this.name = name;
         this.isInit = false;
         this.isChange = false;
@@ -32,8 +35,7 @@ export class RotateModifier {
 
     // gc対象にしてメモリ解放
     destroy() {
-        this.animationBlock.destroy();
-        hierarchy.deleteHierarchy(this);
+        sharedDestroy(this);
         this.name = null;
         this.type = null;
         this.angle = null;
